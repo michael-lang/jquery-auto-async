@@ -1,0 +1,3 @@
+Authors of jQuery AutoAsync in order of contribution
+
+Michael Lang (Github:michael-lang;email:michael.lang@nexul.com)
