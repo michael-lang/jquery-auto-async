@@ -1,4 +1,10 @@
 #################
+## Solution Specific generated files
+#################
+release.log
+NuGet/Content/**/*.*
+
+#################
 ## Eclipse
 #################
 
@@ -137,7 +143,7 @@ Desktop.ini
 *.egg
 *.egg-info
 dist
-build
+#build
 eggs
 parts
 bin

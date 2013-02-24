@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project
+ ToolsVersion="4.0"
+ DefaultTargets="LogParams;BuildPackage"
+ xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+<PropertyGroup>
+ <Source>$(MSBuildProjectDirectory)\src</Source>
+ <Destination>$(MSBuildProjectDirectory)\NuGet\Content\Scripts\</Destination>
+ <NuGetDirectory>$(MSBuildProjectDirectory)\.nuget</NuGetDirectory>
+ <NuGetDropRoot>$(MSBuildProjectDirectory)\NuGetRelease</NuGetDropRoot>
+ <AutoAsyncNuSpec>$(MSBuildProjectDirectory)\NuGet\jquery-auto-async.nuspec</AutoAsyncNuSpec>
+ 
+ <!-- MajorVersion, MinorVersion, and Build are passed in from the command line -->
+ <VersionStartYear>2011</VersionStartYear>
+ <CurrentYear>$([System.DateTime]::Now.Year)</CurrentYear>
+ <Revision>$([MSBuild]::Add(1, $([MSBuild]::Subtract($(CurrentYear), 
+   $(VersionStartYear)))))$([System.DateTime]::Now.ToString("MMdd"))</Revision>
+ <Version>$(MajorVersion).$(MinorVersion).$(Build).$(Revision)</Version>
+ 
+ <MSBuildCommunityTasksPath>$(MSBuildProjectDirectory)\Build\OpenSource\MSBuildCommunityTasks</MSBuildCommunityTasksPath>
+</PropertyGroup>
+
+<Import Project="$(MSBuildProjectDirectory)\Build\OpenSource\NuGet\Build.tasks" />
+<Import Project="$(MSBuildCommunityTasksPath)\MSBuild.Community.Tasks.Targets"/>
+
+<ItemGroup>
+ <SourceDir Include="$(Source)\**\*"></SourceDir>
+ <TargetDir Include="$(Destination)\**\*"></TargetDir>
+</ItemGroup>
+
+<Target Name="Mirror">
+ <Copy SourceFiles="@(SourceDir)"
+  DestinationFiles="@(SourceDir->'$(Destination)%(RecursiveDir)%(Filename)%(Extension)')" >
+     <Output
+      TaskParameter="CopiedFiles"
+      ItemName="OutputFilesToUpdate" />
+ </Copy>
+</Target>
+
+<Target Name="Transform" DependsOnTargets="Mirror">
+ <Message Text="Updating version to $(Version)" />
+ <FileUpdate Files="$(AutoAsyncNuSpec)"
+  Regex="(%3Cversion)%3E\s*(\d\.\d+\.\d+\.\d+)\s*(%3C%2Fversion%3E)"
+  ReplacementText="$1%3E$(Version)$3" />
+ <FileUpdate Files="@(OutputFilesToUpdate)"
+  Regex="@ReleaseVersionNumber"
+  ReplacementText="$(Version)" />
+ <FileUpdate Files="@(OutputFilesToUpdate)"
+  Regex="@ReleaseCurrentYear"
+  ReplacementText="$(CurrentYear)" />
+</Target>
+
+<Target Name="BuildPackage" DependsOnTargets="Transform">
+ <PropertyGroup>
+  <NuGetExe>$(NuGetDirectory)\NuGet.exe</NuGetExe>
+  <NugetDropDirectory>$(NuGetDropRoot)\v$(Version)</NugetDropDirectory>
+ </PropertyGroup>
+ 
+ <MakeDir Directories="$(NuGetDropDirectory)"
+  Condition="!Exists('$(NuGetDropDirectory)')" />
+ <Exec Command="&quot;$(NuGetExe)&quot; pack &quot;$(AutoAsyncNuSpec)&quot; -o &quot;$(NuGetDropDirectory)&quot;"
+  WorkingDirectory="$(NuGetDropDirectory)" />
+</Target>
+
+<Target Name="LogParams">
+ <Message Text="The Source is '$(Source)'"/>
+ <Message Text="The Destination is '$(Destination)'"/>
+ <Message Text="The NuGetDirectory is '$(NuGetDirectory)'"/>
+ <Message Text="The NuGetDropRoot is '$(NuGetDropRoot)'"/>
+ <Message Text="The AutoAsyncNuSpec is '$(AutoAsyncNuSpec)'"/>
+ <Message Text="The Version is '$(Version)'"/>
+</Target>
+
+</Project>
