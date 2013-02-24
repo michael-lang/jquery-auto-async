@@ -18,8 +18,7 @@
       <dependency id="jQuery" version="1.7.1.1" />
       <dependency id="jQuery.UI.Combined" version="1.8.20.1" />
       <dependency id="jQuery.Validation" version="1.9.0.1" />
-	  
-	  <!-- add form2js dependency when available -->
+      <dependency id="form2js" version="1.0.0.30224" />
     </dependencies>
   </metadata>
 </package>
