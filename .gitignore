@@ -2,6 +2,7 @@
 ## Solution Specific generated files
 #################
 release.log
+NuGetRelease/
 NuGet/Content/**/*.*
 
 #################
