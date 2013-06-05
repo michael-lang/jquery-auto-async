@@ -123,3 +123,8 @@ Documentation coming soon...
  - anchordialogpost
  - inlineeditable
  - inlineeditablebuttons
+ 
+ Other resources:
+ ===============
+ http://stackoverflow.com/questions/1898402/jquery-plugin-extend
+ http://addyosmani.com/resources/essentialjsdesignpatterns/book/#jquerypluginpatterns
