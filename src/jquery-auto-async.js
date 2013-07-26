@@ -32,6 +32,7 @@
 *    jquery.ui.button.js 1.8.14+
 *    jquery.validate.js 1.8.14+
 *    form2js
+*    jsRender beta build 40 or later
 
 * editing various buttons with class 'inline-editable-button' can do specific tasks
 * automatically just by specifiying some data- attributes for those desired behaviors.
@@ -122,7 +123,7 @@ var autoasync = (function ($, window, document, undefined) {
                 }
                 $(waitDialog).dialog("close").dialog("destroy").remove();
             },
-            error: function (jqXHR, textStatus, errorThrown) {
+            error: function (jqXhr, textStatus, errorThrown) {
                 var msg = {
                     success: false,
                     message: "Server side call failed. " + errorThrown
@@ -188,12 +189,12 @@ var autoasync = (function ($, window, document, undefined) {
         });
     };
 
-    function createDialog(innerHtml, dialogID) {
+    function createDialog(innerHtml, dialogId) {
         var titleRegex = new RegExp("<title>(.*?)</title>");
         var title = "";
         if (titleRegex.test(innerHtml)) title = titleRegex.exec(innerHtml)[1];
 
-        var dialog = $('<div></div>').attr("id", !!!dialogID ? "dialog" + new Date().valueOf() : dialogID).html(innerHtml).appendTo('body');
+        var dialog = $('<div></div>').attr("id", !!!dialogId ? "dialog" + new Date().valueOf() : dialogId).html(innerHtml).appendTo('body');
 
         $(dialog).dialog({
             close: function (event, ui) {
@@ -224,7 +225,7 @@ var autoasync = (function ($, window, document, undefined) {
                     callback($(element), refreshUrl, msg);
                 }
             },
-            error: function (jqXHR, textStatus, errorThrown) {
+            error: function (jqXhr, textStatus, errorThrown) {
                 if ($.isFunction(callback)) {
                     callback($(element), refreshUrl, [success = false, message = errorThrown]);
                 }
@@ -282,7 +283,7 @@ var autoasync = (function ($, window, document, undefined) {
                 prms.editable.remove();
                 return prms;
             }
-            updated = $("#" + prms.templateName).tmpl(prms.data);
+            updated = $($("#" + prms.templateName).render(prms.data));
         } else if (prms.html) {
             updated = $(prms.html);
         } else {
@@ -435,7 +436,7 @@ var autoasync = (function ($, window, document, undefined) {
                         }
                         return $("<li></li>")
                                 .data("item.autocomplete", item)
-                                .append($("<a></a>")["html"]((tName) ? $("#" + tName).tmpl(item) : item.label))
+                                .append($("<a></a>")["html"]((tName) ? $("#" + tName).render(item) : item.label))
                                 .appendTo(ul);
                     };
                 });
@@ -474,7 +475,7 @@ var autoasync = (function ($, window, document, undefined) {
                             }
                             return $("<li></li>")
                                 .data("item.autocomplete", item)
-                                .append($("<a></a>")["html"]((tName) ? $("#" + tName).tmpl(item) : item.label))
+                                .append($("<a></a>")["html"]((tName) ? $("#" + tName).render(item) : item.label))
                                 .appendTo(ul);
                         };
                     }
@@ -557,6 +558,36 @@ var autoasync = (function ($, window, document, undefined) {
                 });
             }
         },
+        "datarepeater": {
+            enabled: true,
+            enhance: function (section) {
+                $(section).find(".datarepeater").each(function () {
+                    var list = $(this);
+                    var dataUrl = list.data("json-url");
+                    var templateName = list.data("template");
+                    if (!dataUrl) { return; }
+                    $.ajax({
+                        cache: false, type: "get", url: dataUrl, dataType: 'json',
+                        success: function (msg) {
+                            var data = (msg.Items || msg.items || [].concat(msg));
+                            list.find(".repeatitem").remove();
+                            if (templateName) {
+                                $.each(data, function (index, item) {
+                                    var gen = $($("#" + templateName).render(item));
+                                    gen.addClass("repeatitem").data("json-result-item", item);
+                                    list.append(gen);
+                                });
+                            } else {
+                                list.append(data);
+                            }
+                        },
+                        error: function (jqXhr, textStatus, errorThrown) {
+                            autoasync.resultMessage({ element: list, succes: false, message: "Server side call failed. " + errorThrown });
+                        }
+                    });
+                });
+            }
+        },
         "inlineeditable": {
             enhance: function (section) {
                 if (!(section instanceof jQuery)) { section = $(section); }
@@ -569,16 +600,16 @@ var autoasync = (function ($, window, document, undefined) {
                         var data = eval(dataVar);
                         if (data) {
                             list.find(".inline-editable").remove();
-                            autoasync.appendItems(list, data.Items || data.items || [data]);
+                            autoasync.appendItems(list, data.Items || data.items || [].concat(data));
                         }
                     } else if (dataUrl) {
                         $.ajax({
                             cache: false, type: "get", url: dataUrl, dataType: 'json',
                             success: function (msg) {
                                 list.find(".inline-editable").remove();
-                                autoasync.appendItems(list, msg.Items || msg.items || [msg]);
+                                autoasync.appendItems(list, msg.Items || msg.items || [].concat(msg));
                             },
-                            error: function (jqXHR, textStatus, errorThrown) {
+                            error: function (jqXhr, textStatus, errorThrown) {
                                 autoasync.resultMessage({ element: list, succes: false, message: "Server side call failed. " + errorThrown });
                             }
                         });
@@ -601,15 +632,3 @@ var autoasync = (function ($, window, document, undefined) {
         }
     });
 }(jQuery, window, document, autoasync || {}));
-
-(function ($) {
-    if (jQuery.tmpl) {
-        $.extend(jQuery.tmpl.tag, {
-            "for": {
-                _default: { $2: "var i=1;i<=1;i++" },
-                open: 'for ($2){',
-                close: '};'
-            }
-        });
-    }
-})(jQuery);
