@@ -65,7 +65,7 @@ var autoasync = (function ($, window, document, undefined) {
         var ajaxParams = {},
             eventParams = {},
             waitDialog = $("#wait-dialog");
-        if (eventSource instanceof jQuery || eventSource.split) {
+        if (eventSource instanceof $ || eventSource.split) {
             ajaxParams.source = $(eventSource);
         } else {
             $.extend(ajaxParams, eventSource);
@@ -83,19 +83,19 @@ var autoasync = (function ($, window, document, undefined) {
         }
 
         if (!ajaxParams.url) {
-            if (ajaxParams.form instanceof jQuery) {
+            if (ajaxParams.form instanceof $) {
                 ajaxParams.url = ajaxParams.form.attr("action");
-            } else if (ajaxParams.source instanceof jQuery && ajaxParams.source.data("ajax-submit-url")) {
+            } else if (ajaxParams.source instanceof $ && ajaxParams.source.data("ajax-submit-url")) {
                 ajaxParams.url = ajaxParams.source.data("ajax-submit-url");
             }
         }
         if (!ajaxParams.data) {
-            if (!ajaxParams.form && ajaxParams.source instanceof jQuery) {
+            if (!ajaxParams.form && ajaxParams.source instanceof $) {
                 ajaxParams.form = $(ajaxParams.source).closest('form').first();
             }
-            if (ajaxParams.form instanceof jQuery) {
+            if (ajaxParams.form instanceof $) {
                 var formData = ajaxParams.form.serialize();
-                if (ajaxParams.source instanceof jQuery && ajaxParams.source.is(":button,:submit")) {
+                if (ajaxParams.source instanceof $ && ajaxParams.source.is(":button,:submit")) {
                     if (formData.length > 0 || ajaxParams.url.indexOf("?") > -1) {
                         formData += "&";
                     } else {
@@ -279,7 +279,7 @@ var autoasync = (function ($, window, document, undefined) {
     function toggleAction(prms) {
         var updated;
         if (prms.templateName) {
-            if (prms.editable instanceof jQuery && prms.button instanceof jQuery && prms.editable.data("isNew") && prms.button.hasClass("link-button-cancel")) {
+            if (prms.editable instanceof $ && prms.button instanceof $ && prms.editable.data("isNew") && prms.button.hasClass("link-button-cancel")) {
                 prms.editable.remove();
                 return prms;
             }
@@ -290,7 +290,7 @@ var autoasync = (function ($, window, document, undefined) {
             return prms;
         }
         updated.addClass("inline-editable").data("json-result-item", prms.data);
-        if (prms.editable instanceof jQuery && prms.editable.length > 0) {
+        if (prms.editable instanceof $ && prms.editable.length > 0) {
             if (prms.editable.data("isNew") && prms.isUpdate) {
                 updated.data("isNew", "true"); //replacing the new item on post result from url
             }
@@ -311,7 +311,7 @@ var autoasync = (function ($, window, document, undefined) {
     /* An asynchronous method (usually) to do the appropriate action for a given inline-editable-button */
 
     function clickButton(button, callback) {
-        if (!(button instanceof jQuery)) {
+        if (!(button instanceof $)) {
             button = $(button);
         }
         if (!button.hasClass("inline-editable-button")) {
@@ -327,8 +327,8 @@ var autoasync = (function ($, window, document, undefined) {
             url = button.data("url"),
             urlDataType = button.data("url-datatype") || "json",
             urlMethod = button.data("url-method");
-        if (form instanceof jQuery && form.length > 0) {
-            if (button instanceof jQuery && !button.hasClass("link-button-cancel")) {
+        if (form instanceof $ && form.length > 0) {
+            if (button instanceof $ && !button.hasClass("link-button-cancel")) {
                 if (!autoasync.isValidForm(button)) {
                     return;
                 }
@@ -590,7 +590,7 @@ var autoasync = (function ($, window, document, undefined) {
         },
         "inlineeditable": {
             enhance: function (section) {
-                if (!(section instanceof jQuery)) { section = $(section); }
+                if (!(section instanceof $)) { section = $(section); }
                 var lists = section.hasClass("inline-editable-host") ? section : section.find(".inline-editable-host");
                 lists.each(function () {
                     var list = $(this);
@@ -619,7 +619,7 @@ var autoasync = (function ($, window, document, undefined) {
         },
         "inlineeditablebuttons": {
             enhance: function (section) {
-                if (!(section instanceof jQuery)) { section = $(section); }
+                if (!(section instanceof $)) { section = $(section); }
                 if (!section.hasClass("inline-editable") && !section.hasClass("inline-editable-host")) { return; }
                 section.find(".inline-editable-button").bind("click", function (event) {
                     event.preventDefault();
