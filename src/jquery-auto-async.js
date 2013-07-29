@@ -27,10 +27,10 @@
 * - supports an asyncronous user interface (http://candordeveloper.com/2012/07/19/asyncui-mvc-with-progressive-enhancement/)
 *
 * Depends:
-*    jquery 1.6.2+
-*    jquery.ui.widget.js 1.8.14+
-*    jquery.ui.button.js 1.8.14+
-*    jquery.validate.js 1.8.14+
+*    jquery 2.0.3+
+*    jquery.ui.widget.js 1.8.24+
+*    jquery.ui.button.js 1.8.24+
+*    jquery.validate.js 1.10.0+
 *    form2js
 *    jsRender beta build 40 or later
 
