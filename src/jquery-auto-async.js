@@ -254,13 +254,14 @@ var autoasync = (function ($, window, document, undefined) {
             return true;
         }
         $(elm).parents("form").find(":input:not(:hidden)").each(function (index, el) {
+            el = $(el);
             if (el.is(":not(:visible)")) {
                 el.val("");
             }
 
             if (el.val() != "" || el.hasClass('required')) {
                 if (el.attr("nodeName") != "/INPUT") {
-                    if (!this.parents("form").validate().element(this)) {
+                    if (!el.parents("form").validate().element(this)) {
                         valid = false;
                     }
                 }
