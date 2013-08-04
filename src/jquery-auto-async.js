@@ -46,10 +46,18 @@
 
 var autoasync = (function ($, window, document, undefined) {
     var attr = {};
+    var callbacks = [];
 
-    function init() {
+    function init(callback) {
+        if (callback) {
+            callbacks.push(callback);
+        }
         enhance($(document));
     };
+    
+    function enhanceCallback(callback) {
+        callbacks.push(callback);
+    };  //TODO: rename this function?
 
     function enhance(section) {
         $.each(attr, function (name, item) {
@@ -58,7 +66,9 @@ var autoasync = (function ($, window, document, undefined) {
                 item.enhance(section);
             }
         });
-        $("body").trigger("enhance", { element: section });
+        callbacks.forEach(function(item) {
+            item({ element: section });
+        });
     };
 
     function post(eventSource, callback) {
@@ -387,6 +397,7 @@ var autoasync = (function ($, window, document, undefined) {
     return {
         attr: attr,
         init: init,
+        enhanceCallback: enhanceCallback,
         enhance: enhance,
         post: post,
         resultMessage: resultMessage,
