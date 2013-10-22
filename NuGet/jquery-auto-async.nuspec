@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Candor.jQuery.AutoAsync</id>
-    <version>2.0.0.30815</version>
+    <version>2.1.0.31021</version>
     <authors>Michael Lang</authors>
     <owners>Nexul Software LLC, Michael Lang</owners>
     <copyright>Copyright 2013 Michael Lang</copyright>
@@ -12,6 +12,11 @@
     <description>automatically enhances elements based on data-attributes or class names.  supports an asyncronous user interface (http://candordeveloper.com/2012/07/19/asyncui-mvc-with-progressive-enhancement/)</description>
     <releaseNotes>This code is open source and can be found at https://github.com/michael-lang/jquery-auto-async
 	In depth articles can be found at http://candordeveloper.com/
+	Changes:
+	2.1.0: * add 'autoaync.refreshEditable' method - reloads items in an ".inline-editable-host" or an item repeater on demand.  The url of the host removes any parameters in the url for that get/post that are defined as data attributes on the button.
+	* add 'autoasync.urlRemoveParams' method (used by refreshEditable) .
+	* autoasync.clickButton added an automatic complete callback to refreshEditable on any element selectors defined in a 'data-host-selector' attribute of the button.
+	* 'inline-editable-button' elements can now be anywhere within an enhanced element. It can specify an 'data-editable-container' as an alternate to being in an '.inline-editable-host"
 	</releaseNotes>
     <tags>candor jquery asynchronous</tags>
     <dependencies>

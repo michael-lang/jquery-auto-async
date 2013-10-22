@@ -54,7 +54,22 @@ var autoasync = (function ($, window, document, undefined) {
         }
         enhance($(document));
     };
-    
+    function urlRemoveParams(url, prms) {
+        var hash, vars = [], u = url.split('?');
+        var res = u[0], q = u[1];
+        if (q != undefined) {
+            q = q.split('&');
+            for (var i = 0; i < q.length; i++) {
+                hash = q[i].split('=');
+                if (prms[hash[0]] == undefined) {
+                    vars.push(q[i]);
+                }
+            }
+            res = res + "?" + vars.join('&');
+        }
+        return res;
+    };
+
     function enhanceCallback(callback) {
         callbacks.push(callback);
     };  //TODO: rename this function?
@@ -66,7 +81,7 @@ var autoasync = (function ($, window, document, undefined) {
                 item.enhance(section);
             }
         });
-        callbacks.forEach(function(item) {
+        callbacks.forEach(function (item) {
             item({ element: section });
         });
     };
@@ -244,9 +259,35 @@ var autoasync = (function ($, window, document, undefined) {
     };
 
     function refreshAllSections(callback) {
-        $('[data-view-url]').each(function (index) {
+        $('[data-view-url]').each(function () {
             autoasync.refreshSection($(this), callback);
         });
+    };
+
+    function refreshEditable(prms) {
+        var editable = $(prms.editable);
+        var dataUrl = editable.data("json-url");
+        if (dataUrl) {
+            var data = {};
+            $.each(prms.button.data(), function (key, value) {
+                if (typeof value === "string") {
+                    data[key] = value;
+                }
+            });
+            dataUrl = autoasync.urlRemoveParams(dataUrl, data);
+            $.ajax({
+                cache: false, type: "get", url: dataUrl, dataType: 'json',
+                data: data,
+                success: function (msg) {
+                    editable.find(".inline-editable").remove();
+                    editable.find(".repeatitem").remove();
+                    autoasync.appendItems(editable, msg.Items || msg.items || [].concat(msg));
+                },
+                error: function (jqXhr, textStatus, errorThrown) {
+                    autoasync.resultMessage({ element: editable, success: false, message: "Server side call failed. " + errorThrown });
+                }
+            });
+        }
     };
 
     function isValid(elm) {
@@ -289,6 +330,7 @@ var autoasync = (function ($, window, document, undefined) {
 
     function toggleAction(prms) {
         var updated;
+        //TODO: check prms.button.data("host-selector") for other elements to also update
         if (prms.templateName) {
             if (prms.editable instanceof $ && prms.button instanceof $ && prms.editable.data("isNew") && prms.button.hasClass("link-button-cancel")) {
                 prms.editable.remove();
@@ -337,7 +379,15 @@ var autoasync = (function ($, window, document, undefined) {
             insertOrder = button.data("insert-order"),
             url = button.data("url"),
             urlDataType = button.data("url-datatype") || "json",
-            urlMethod = button.data("url-method");
+            urlMethod = button.data("url-method"),
+            clickCallbacks = [];
+        clickCallbacks.push(function () {
+            $(button.data("host-selector")).each(function (i, host) {
+                autoasync.refreshEditable({ editable: host, button: button });
+            });
+        });
+        if (callback)
+            clickCallbacks.push(callback);
         if (form instanceof $ && form.length > 0) {
             if (button instanceof $ && !button.hasClass("link-button-cancel")) {
                 if (!autoasync.isValidForm(button)) {
@@ -385,13 +435,19 @@ var autoasync = (function ($, window, document, undefined) {
                         togglePrms.html = result;
                         autoasync.toggleAction(togglePrms);
                     }
-                    if ($.isFunction(callback)) {
-                        callback(togglePrms);
-                    }
+                    clickCallbacks.forEach(function (item) {
+                        if ($.isFunction(item)) {
+                            item(togglePrms);
+                        }
+                    });
                 }
             );
-        } else if ($.isFunction(callback)) {
-            callback(togglePrms);
+        } else {
+            clickCallbacks.forEach(function (item) {
+                if ($.isFunction(item)) {
+                    item(togglePrms);
+                }
+            });
         }
     };
     return {
@@ -399,12 +455,14 @@ var autoasync = (function ($, window, document, undefined) {
         init: init,
         enhanceCallback: enhanceCallback,
         enhance: enhance,
+        urlRemoveParams: urlRemoveParams,
         post: post,
         resultMessage: resultMessage,
         postDialog: postDialog,
         createDialog: createDialog,
         refreshSection: refreshSection,
         refreshAllSections: refreshAllSections,
+        refreshEditable: refreshEditable,
         isValid: isValid,
         isValidForm: isValidForm,
         appendItems: appendItems,
@@ -548,11 +606,10 @@ var autoasync = (function ($, window, document, undefined) {
                     var anchor = $(this);
                     var url = anchor.attr("href");
                     if (url.indexOf("?") != -1) { url += "&d=1"; } else { url += "?d=1"; }
-                    $.get(url, function (data, textStatus, jqXHR) {
+                    $.get(url, function (data, textStatus) {
                         if (textStatus == "success") {
                             autoasync.createDialog(data);
                         } else {
-                            /*TODO: should this navigate or should it show an error dialog that the page was not found*/
                             window.location.href = anchor.attr("href");
                         }
                     });
@@ -632,13 +689,20 @@ var autoasync = (function ($, window, document, undefined) {
         "inlineeditablebuttons": {
             enhance: function (section) {
                 if (!(section instanceof $)) { section = $(section); }
-                if (!section.hasClass("inline-editable") && !section.hasClass("inline-editable-host")) { return; }
-                section.find(".inline-editable-button").bind("click", function (event) {
-                    event.preventDefault();
-                    autoasync.clickButton(event.target);
-                });
-                section.find(".inline-editable-button").closest("form").submit(function () {
-                    return false; //buttons no longer submit, only do custom click above
+
+                section.find(".inline-editable-button").each(function (i, btn) {
+                    if (!(btn instanceof $)) { btn = $(btn); }
+                    var cntr = btn.data("editable-container") ? $(btn.data("editable-container")) : btn.closest(".inline-editable-host");
+                    if (cntr == undefined || cntr.length == 0) {
+                        return;
+                    }
+                    btn.bind("click", function (event) {
+                        event.preventDefault();
+                        autoasync.clickButton(event.target);
+                    });
+                    btn.closest("form").submit(function () {
+                        return false; //buttons no longer submit, only do custom click above
+                    });
                 });
             }
         }
