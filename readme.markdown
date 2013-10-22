@@ -129,7 +129,7 @@ Basic structure of the worklist month pager item:
             <span class="inline-editable-host-updater worklist-month-pager {{>RelativeMonthStyle}}" 
                   data-host-selector="#worklist-date-title, .worklist-items, .worklist-days, .worklist-months" 
                   data-date="{{>RequestYear}}/{{>RequestMonth}}/01" 
-                  title="{{>OpenReservationRequests}} Open Requests, {{>ExpiringReservationRequests}} Expiring Requests">
+                  title="{{>OpenRequests}} Open Requests, {{>ExpiringRequests}} Expiring Requests">
                 {{>MonthName}} 
             </span>
         </span>
@@ -160,7 +160,7 @@ The above item has a class of "worklist-days" which is one of the selectors in t
     	</span>
     </script>
 	
-As you can see this is yet another filter that when a date is clicked will again filter the main list of items from use case 1.  The data-date in this template and in the month list above both are parameter values passed to the data-json-url of the parent 'inline-editable-host' container element.  The server side code looks for the data parameter to know what values to return in the list.  For instance the date parameter tells the /Worklist/SummaryByRange API call what month to return days of the month for.  You may see a conflict in that the date parameter is already specified on the data-json-url path querystring.  auto-async handles this by removing prior values in the querystring of the same name as any data attribute values being passed.  Basically the data- extra parameter values are overrides for the default url parameters.
+As you can see this is yet another filter that when a date is clicked will again filter the main list of items from use case 1.  The data-date in this template and in the month list above both are parameter values passed to the data-json-url of the parent 'inline-editable-host' container element.  The server side code looks for the date parameter to know what values to return in the list.  For instance the date parameter tells the /Worklist/SummaryByRange API call what month to return days of the month for.  You may see a conflict in that the date parameter is already specified on the data-json-url path querystring.  auto-async handles this by removing prior values in the querystring of the same name as any data attribute values being passed.  Basically the data- extra parameter values are overrides for the default url parameters.
 
 Use case 3: data repeaters (example: radio button list):
 ---------------------------
