@@ -1,6 +1,6 @@
 ﻿/*
 * Copyright (c) 2013, Michael Lang
-* Version 1.0.0.30224
+* Version 3.0.0.31022
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -22,9 +22,11 @@
 *
 * @authors: AUTHORS.txt
 *
-* jQuery Automatic Asyncronous (Github:jquery-auto-async; jquery namespace:autoasync)
+* jQuery Automatic Asynchronous (Github:jquery-auto-async; jquery namespace:autoasync)
 * - automatically enhances elements based on data-attributes or class names
-* - supports an asyncronous user interface (http://candordeveloper.com/2012/07/19/asyncui-mvc-with-progressive-enhancement/)
+* - supports an asynchronous user interface 
+* -  http://candordeveloper.com/2012/07/19/asyncui-mvc-with-progressive-enhancement/
+* -  http://candordeveloper.com/2013/10/21/auto-async-with-use-cases/
 *
 * Depends:
 *    jquery 2.0.3+
@@ -35,7 +37,7 @@
 *    jsRender beta build 40 or later
 
 * editing various buttons with class 'inline-editable-button' can do specific tasks
-* automatically just by specifiying some data- attributes for those desired behaviors.
+* automatically just by specifying some data- attributes for those desired behaviours.
 *
 *EX: click save - update json from form before post, post it, then show next template
 *EX: click cancel - just toggle to next template
@@ -70,9 +72,9 @@ var autoasync = (function ($, window, document, undefined) {
         return res;
     };
 
-    function enhanceCallback(callback) {
+    function addCallback(callback) {
         callbacks.push(callback);
-    };  //TODO: rename this function?
+    };
 
     function enhance(section) {
         $.each(attr, function (name, item) {
@@ -141,11 +143,6 @@ var autoasync = (function ($, window, document, undefined) {
                 if ($.isFunction(callback)) {
                     callback(msg);
                 }
-                if (msg.success == false) {
-                    $("body").trigger("ajax-post-fail", $.extend({}, ajaxParams, { result: msg }));
-                } else {
-                    $("body").trigger("ajax-post-success", $.extend({}, ajaxParams, { result: msg }));
-                }
                 $(waitDialog).dialog("close").dialog("destroy").remove();
             },
             error: function (jqXhr, textStatus, errorThrown) {
@@ -156,12 +153,10 @@ var autoasync = (function ($, window, document, undefined) {
                 if ($.isFunction(callback)) {
                     callback(msg);
                 }
-                $("body").trigger("ajax-post-fail", $.extend({}, ajaxParams, { result: msg }));
                 $(waitDialog).dialog("close").dialog("destroy").remove();
             }
         }, ajaxParams);
         if (ajaxParams.data && ajaxParams.url) {
-            $("body").trigger("before-ajax-post", eventParams);
             $.ajax(ajaxParams);
         } else if ($.isFunction(callback)) {
             callback({ success: false, message: "Server side connection not available at this time." });
@@ -184,86 +179,7 @@ var autoasync = (function ($, window, document, undefined) {
             prms.element.find(".msg").addClass("ui-state-error").removeClass("ui-state-highlight").append(doneMarkup);
         }
     };
-
-    function postDialog(eventSource) {
-        var theform = $(eventSource).closest('form').first();
-        var theDialog = $(theform).parents(".ui-dialog");
-
-        theform.find(".msg").hide().empty();
-
-        autoasync.post({ source: eventSource, form: theform }, function (msg) {
-            if (msg.success == true) {
-                theform.find(".msg").addClass("success ui-state-highlight").removeClass("ui-state-error");
-                if (msg.message) {
-                    theform.find(".msg").html(msg.message).show();
-                } else {
-                    theform.find(".msg").html("Success").show();
-                }
-                if (!msg.preventClose) {
-                    setTimeout(function () {
-                        $(theDialog).dialog("close").dialog("destroy").remove();
-                    }, 1000); //wait one second to run close function
-                }
-            } else if (msg.success == false) {
-                theform.find(".msg").addClass("ui-state-error").removeClass("success ui-state-highlight");
-                theform.find(".msg").html(msg.message).show();
-            } else {
-                $(theDialog).dialog("destroy").remove();
-                autoasync.createDialog(msg);
-            }
-        });
-    };
-
-    function createDialog(innerHtml, dialogId) {
-        var titleRegex = new RegExp("<title>(.*?)</title>");
-        var title = "";
-        if (titleRegex.test(innerHtml)) title = titleRegex.exec(innerHtml)[1];
-
-        var dialog = $('<div></div>').attr("id", !!!dialogId ? "dialog" + new Date().valueOf() : dialogId).html(innerHtml).appendTo('body');
-
-        $(dialog).dialog({
-            close: function (event, ui) {
-                $(dialog).dialog("destroy").remove();
-            },
-            modal: true,
-            title: title //,
-            //width: "60%" //IE sucks - title bar renders improperly until dialog is resized
-            //TODO: set width to width of outermost element, if missing then fallback to a %.
-        });
-        autoasync.enhance($(dialog));
-        $("body").trigger("dialog-ready", { dialog: $(dialog), html: innerHtml });
-    };
-
-    function refreshSection(element, callback) {
-        var refreshUrl = $(element).attr('data-view-url');
-        if (!refreshUrl) {
-            return;
-        }
-        $.ajax({
-            cache: false,
-            type: "get",
-            url: refreshUrl,
-            success: function (msg) {
-                $(element).html(msg);
-                autoasync.enhance(element);
-                if ($.isFunction(callback)) {
-                    callback($(element), refreshUrl, msg);
-                }
-            },
-            error: function (jqXhr, textStatus, errorThrown) {
-                if ($.isFunction(callback)) {
-                    callback($(element), refreshUrl, [success = false, message = errorThrown]);
-                }
-            }
-        });
-    };
-
-    function refreshAllSections(callback) {
-        $('[data-view-url]').each(function () {
-            autoasync.refreshSection($(this), callback);
-        });
-    };
-
+    
     function refreshEditable(prms) {
         var editable = $(prms.editable);
         var dataUrl = editable.data("json-url");
@@ -330,7 +246,6 @@ var autoasync = (function ($, window, document, undefined) {
 
     function toggleAction(prms) {
         var updated;
-        //TODO: check prms.button.data("host-selector") for other elements to also update
         if (prms.templateName) {
             if (prms.editable instanceof $ && prms.button instanceof $ && prms.editable.data("isNew") && prms.button.hasClass("link-button-cancel")) {
                 prms.editable.remove();
@@ -356,13 +271,15 @@ var autoasync = (function ($, window, document, undefined) {
                 prms.container.append(updated);
             }
         }
+        $(updated.data("host-selector")).each(function (i, host) {
+            autoasync.refreshEditable({ editable: host, button: prms.button });
+        });
         autoasync.enhance(updated);
         prms.editable = updated;
-        $("body").trigger("inline-editable-changed", prms);
         return prms;
     };
+	
     /* An asynchronous method (usually) to do the appropriate action for a given inline-editable-button */
-
     function clickButton(button, callback) {
         if (!(button instanceof $)) {
             button = $(button);
@@ -453,15 +370,11 @@ var autoasync = (function ($, window, document, undefined) {
     return {
         attr: attr,
         init: init,
-        enhanceCallback: enhanceCallback,
+        addCallback: addCallback,
         enhance: enhance,
         urlRemoveParams: urlRemoveParams,
         post: post,
         resultMessage: resultMessage,
-        postDialog: postDialog,
-        createDialog: createDialog,
-        refreshSection: refreshSection,
-        refreshAllSections: refreshAllSections,
         refreshEditable: refreshEditable,
         isValid: isValid,
         isValidForm: isValidForm,
@@ -599,34 +512,6 @@ var autoasync = (function ($, window, document, undefined) {
                     });
             }
         },
-        "anchordialogopener": {
-            enhance: function (section) {
-                $(section).find(".target-as-dialog:not(.ajax-submit)").bind("click", function (event) {
-                    event.preventDefault();
-                    var anchor = $(this);
-                    var url = anchor.attr("href");
-                    if (url.indexOf("?") != -1) { url += "&d=1"; } else { url += "?d=1"; }
-                    $.get(url, function (data, textStatus) {
-                        if (textStatus == "success") {
-                            autoasync.createDialog(data);
-                        } else {
-                            window.location.href = anchor.attr("href");
-                        }
-                    });
-                });
-            }
-        },
-        "anchordialogpost": {
-            enhance: function (section) {
-                $(section).find(":submit.ajax-submit").closest("form").submit(function () {
-                    return false;
-                });
-                $(section).find(":submit.ajax-submit").click(function (event) {
-                    event.preventDefault();
-                    autoasync.post($(event.target));
-                });
-            }
-        },
         "datarepeater": {
             enabled: true,
             enhance: function (section) {
@@ -657,7 +542,8 @@ var autoasync = (function ($, window, document, undefined) {
                 });
             }
         },
-        "inlineeditable": {
+        "inline-editable": {
+            enabled: true,
             enhance: function (section) {
                 if (!(section instanceof $)) { section = $(section); }
                 var lists = section.hasClass("inline-editable-host") ? section : section.find(".inline-editable-host");
@@ -686,7 +572,8 @@ var autoasync = (function ($, window, document, undefined) {
                 });
             }
         },
-        "inlineeditablebuttons": {
+        "inline-editable-button": {
+            enabled: true,
             enhance: function (section) {
                 if (!(section instanceof $)) { section = $(section); }
 
@@ -702,6 +589,48 @@ var autoasync = (function ($, window, document, undefined) {
                     });
                     btn.closest("form").submit(function () {
                         return false; //buttons no longer submit, only do custom click above
+                    });
+                });
+            }
+        },
+        "inline-editable-host-updater": {
+            enabled: true,
+            enhance: function(section) {
+                $(section).find(".inline-editable-host-updater").not(":submit").click(function(event) {
+                    var updater = $(this);
+                    $(updater.data("host-selector")).each(function(i, host) {
+                        autoasync.refreshEditable({ editable: host, button: updater });
+                    });
+                });
+            }
+        },
+        "template-dialog": {
+            enabled: true,
+            enhance: function (section) {
+                if (!(section instanceof $)) { section = $(section); }
+
+                section.find(".template-dialog").each(function (i, btn) {
+                    $(btn).unbind("click").click(function(event) {
+                        var link = $(this);
+                        var templateName = link.data("template");
+                        if (!templateName) {
+                            return;
+                        }
+                        event.preventDefault();
+                        var host = $(link.data("appendTo") || "body");
+                        var data = link.data();
+                        var content = $($("#" + templateName).render(data));
+                        var dialogId = content.attr("id") || "dialog" + new Date().valueOf();
+                        content.attr("id", dialogId);
+                        $(content).dialog({
+                            appendTo: host,
+                            width: "auto",
+                            close: function() {
+                                $(dialogId).dialog("destroy").remove();
+                            }
+                        });
+                        //TODO: button clicks inside with class 'close-dialog' should close the dialog
+                        autoasync.enhance($(content));
                     });
                 });
             }

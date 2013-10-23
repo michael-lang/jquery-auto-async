@@ -100,10 +100,14 @@ Basic structure of an action template (edit form):
         </div>
     </script>
 
-Note the template syntax for inserting data item property values into the generated html.  Each button that can toggle over to another view must have the "inline-editable-button" class applied.  data- attributes contol the behavior of the buttons.
+Note the template syntax for inserting data item property values into the generated html.  Each button that can toggle over to another view must have the "inline-editable-button" class applied.  data- attributes control the behaviour of the buttons.
 
 - data-url: defines where to post the form containing this button to, which you use to tell the server about the change in state and persist anything the user did on this view.  If this attribute is missing, then it will use the parent form action url.  If there is no form, and no data-url attribute, then no post occurs and it just swaps to the next view.
-- data-template: The name of the template to be switched over to when the button is clicked.  The same item the current view was bound to will also be bound to the new view.  
+- data-template: The name of the template to be switched over to when the button is clicked.  The same item the current view was bound to will also be bound to the new view. 
+- data-editable-container: Optional, defines a container elsewhere in document where the template should be inserted.  This is intended for things like an 'add' button to the list.  If not specified, the target container is the closest parent with class 'inline-editable-host'.  See use case 4 for example usage.
+- data-editable-element: Optional, A selector to an inline-editable element.  It is for edge cases when the button does not exist within the element being toggled to another state.  When not specified, the closest parent element with class 'inline-editable' is used.
+- data-insert-order: Optional, when specified as 'first' it sets if the replacement view template as the first inline editable within the target container inline editable host.  Any other value, or when missing puts the replacement template in the same order as the view being replaced, or if an insert/add it goes at the end by default.
+data-url-method: Optional. If specified it determines the http transport method to call the data-url.  'get' by default.
 
 Once the post to data-url is complete, the defined data-template will be bound again to the JSON item returned from the server.  This accounts for the server updating a calculated property, or just checking if it was updated by another user.
 
@@ -186,7 +190,79 @@ Example called by the above repeater:
         <span class="desc">Desc: {{>Description}}</span><br/>
     </script>
 
+Use case 4: open link in a dialog:
+----------------------------------
 
+You may want to open a detailed window in a dialog.  Starting in version 3.0, this is as easy as putting a class of 'template-dialog' on a clickable element (anything that fires a click event).  When the element is clicked on, it will open a template as a jQuery UI dialog.
+
+Options:
+- data-template: The template to be instantiated into the dialog.
+- data-appendTo: Optional. The parent element to append the instantiated template before it is turned into a dialog.  The default is 'body'.
+- data-?: You can add as many arguments as desired and they are all passed into the template when instantiated (minus the 'data-' prefix).  If there are dashes in the data- attributes, they are removed and the next character is upper cased.  Example: 'data-confirmation-number' becomes 'confirmationNumber', and 'data-host-selector' becomes 'hostSelector' in the instantiated template.
+
+Note, this does not load a url as part of instantiating the dialog.  However, if you want the dialog populated from data loaded from your server API, just put an inline-editable-host per use case 1 in the template instantiated into the dialog.  It will enhance itself and work as expected in use case 1.
+
+Example markup containing a "template-dialog" link (this appears inline on the page):
+
+    <script id="RequestCommentPartialListView" type="text/x-jsrender">
+		<div class="worklist-partial-comments" id="Comments{{>ConfirmationNumber}}">
+			<span class="datarepeater worklist-comment-partial-repeater"
+				data-json-url="/worklist/RequestActivity?confirmationNumber={{>ConfirmationNumber}}"
+				data-template="RequestCommentPartialView"></span>
+			<div class="full-comments-link">
+				<a href="#" class="template-dialog"
+					data-template="RequestCommentListView"
+					data-host-selector="#Comments{{>ConfirmationNumber}} .worklist-comment-partial-repeater"
+					data-confirmation-number="{{>ConfirmationNumber}}">View All Customer Comments</a>
+			</div>
+		</div>
+	</script>
+
+Notice how this sample also has a data-host-selector attribute.  This does not actually update any other elements when this link is clicked, because it does not have the "inline-editable-host-updater" class applied.  The reason it is there is to pass it down to the next template.  Notice how {{>hostSelector}} is used in this next instantiated template.  The child template does not know what other parent elements need to be updated, so the parent template just needs to pass it along.
+
+    <script id="RequestCommentListView" type="text/x-jsrender">
+        <div class="worklist-comments worklist-comment-repeater" id="Comments{{>confirmationNumber}}">
+            <span class="inline-editable-host worklist-comment-repeater"
+              data-json-url="/worklist/RequestActivity?confirmationNumber={{>confirmationNumber}}"
+              data-template="RequestCommentView"></span>
+            <div class="worklist-comment-add">
+                <h3>Add Comment</h3>
+                <div class="add-comment-box">
+					<form action="/worklist/RequestComment" method="post">
+						<input type="hidden" name="confirmationNumber" id="confirmationNumber" value="{{>confirmationNumber}}" />
+                        <span class="input">
+                            <textarea id="comment" name="comment" class="resizable"></textarea>
+                        </span>
+                        <div class="command-buttons">
+                            <input type="submit" value="Save" id="Save" name="Save" class="inline-editable-button right-float inline-editable-host-updater"
+                                   data-host-selector="#Comments{{>confirmationNumber}} .worklist-comment-repeater, {{>hostSelector}}"
+                                   data-editable-container="#Comments{{>confirmationNumber}} .worklist-comment-repeater" />
+                            <span class="msg clear"></span>
+                        </div>
+					</form>
+				</div>
+            </div>
+        </div>
+    </script>
+
+Here are the item templates used by each comment list.  The partial view shows minimal data that fits in a smaller space.  The full comment item includes all the available fields.  These are included just to show why you may want to implement this use case.
+
+    <script id="RequestCommentPartialView" type="text/x-jsrender" data-jsv-tmpl="_9">
+        <span class="waitlist-request-comment">
+            <span class="comment-date">{{>~formatDate(Date)}}</span>
+            <span class="comment-name">{{>Name}}</span>
+            <span class="comment-text">{{>Comment}}</span>
+        </span>
+    </script>
+    <script id="RequestCommentView" type="text/x-jsrender" data-jsv-tmpl="_16">
+        <span class="waitlist-request-comment">
+            <span class="comment-date">{{>~formatDate(Date)}}</span>
+            <span class="comment-name">{{>Name}}</span>
+            <span class="comment-status">{{>StatusChange}}</span>
+            <span class="comment-text">{{>Comment}}</span>
+        </span>
+    </script>
+	
 Built in enhancements (plug-ins)
 =====================
 
@@ -240,14 +316,6 @@ hover
 -----
 This makes up for any browser that does not support the :hover CSS selector by applying the jQuery UI hover styles on hover events using javascript code.  Any element with style "ui-state-default" will get style "ui-state-hover" applied on hover, and have "ui-state-hover" removed when the item is not hovered over.
 
-anchordialogopener
-------------------
-TODO: this item may be removed from auto-async given the improved inline-editable enhancements?
-
-anchordialogpost
-----------------
-TODO: this item may be removed from auto-async given the improved inline-editable enhancements?
-
 inlineeditable
 --------------
 See the documentation use cases above for how this works in detail.  Any element with class "inline-editable-host" applied will become an auto-async inline editable host per the use cases above.
@@ -260,6 +328,9 @@ datarepeater
 ------------
 See the documentation use cases above for how this works in detail.  Any element with class "datarepeater" applied will become an auto-async data repeater.
 
+templatedialog
+--------------
+enhances a link to open a dialog using the data-template using all data attributes on the element within the template instantiation.  For that template to use data loaded from a url it should define an inline-editable-host with the appropriate data attributes.
  
 Built in functions
 =====================
@@ -286,24 +357,6 @@ $.autoasync.resultMessage
 -------------------------
 Updates an element with class "msg" applied with the resulting error or success message from an ajax post as
 returned by the server.
-
-$.autoasync.postDialog
-----------------------
-Posts the contents of a dialog and decides if the dialog should remain open based on success of the ajax call.
-This is meant to be used by dialogs opened by createDialog.
-
-$.autoasync.createDialog
-------------------------
-creates a dialog from an html string and enhances it.
-
-$.autoasync.refreshSection
---------------------------
-Refreshes a section of html with data from a given url specified by attribute "data-view-url".  Does nothing
-if the attribute is missing or not a valid url.
-
-$.autoasync.refreshAllSections
-------------------------------
-Refreshes all sections of html on the page that have the "data-view-url" attribute.
 
 $.autoasync.isValid
 -------------------
