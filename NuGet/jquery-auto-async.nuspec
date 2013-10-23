@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Candor.jQuery.AutoAsync</id>
-    <version>2.1.0.31021</version>
+    <version>3.0.0.31022</version>
     <authors>Michael Lang</authors>
     <owners>Nexul Software LLC, Michael Lang</owners>
     <copyright>Copyright 2013 Michael Lang</copyright>
@@ -13,6 +13,9 @@
     <releaseNotes>This code is open source and can be found at https://github.com/michael-lang/jquery-auto-async
 	In depth articles can be found at http://candordeveloper.com/
 	Changes:
+	3.0.0: * renamed method 'enhanceCallback' to 'addCallback'
+	* removed obsolete methods and plugins
+	* added template-dialog and inline-editable-host-updater plugins
 	2.1.0: * add 'autoaync.refreshEditable' method - reloads items in an ".inline-editable-host" or an item repeater on demand.  The url of the host removes any parameters in the url for that get/post that are defined as data attributes on the button.
 	* add 'autoasync.urlRemoveParams' method (used by refreshEditable) .
 	* autoasync.clickButton added an automatic complete callback to refreshEditable on any element selectors defined in a 'data-host-selector' attribute of the button.
