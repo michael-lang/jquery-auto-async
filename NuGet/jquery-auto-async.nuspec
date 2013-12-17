@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Candor.jQuery.AutoAsync</id>
-    <version>3.0.0.31022</version>
+    <version>3.1.0.31217</version>
     <authors>Michael Lang</authors>
     <owners>Nexul Software LLC, Michael Lang</owners>
     <copyright>Copyright 2013 Michael Lang</copyright>
@@ -13,6 +13,12 @@
     <releaseNotes>This code is open source and can be found at https://github.com/michael-lang/jquery-auto-async
 	In depth articles can be found at http://candordeveloper.com/
 	Changes:
+	3.1.0: * post function will now use a Web API error response text for display to user, with fallback to prior message logic.
+	* added datepicker plugin
+	* fix autocomplete and listbuilder async plugin for proper widget use
+	* consistent casing checks on form method
+	* on button click, the json data used has a final fallback value of the button's data attributes instead of null.
+	* on view template toggle, it better handles the case of when 'cancel' type actions were for an add that should not toggle or if for an edit that should toggle back to a view.
 	3.0.0: * renamed method 'enhanceCallback' to 'addCallback'
 	* removed obsolete methods and plugins
 	* added template-dialog and inline-editable-host-updater plugins

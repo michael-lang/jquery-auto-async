@@ -148,7 +148,7 @@ var autoasync = (function ($, window, document, undefined) {
             error: function (jqXhr, textStatus, errorThrown) {
                 var msg = {
                     success: false,
-                    message: "Server side call failed. " + errorThrown
+                    message: (jqXhr.responseJSON || {}).Message || ("Server side call failed. " + errorThrown)
                 };
                 if ($.isFunction(callback)) {
                     callback(msg);
@@ -179,7 +179,7 @@ var autoasync = (function ($, window, document, undefined) {
             prms.element.find(".msg").addClass("ui-state-error").removeClass("ui-state-highlight").append(doneMarkup);
         }
     };
-    
+
     function refreshEditable(prms) {
         var editable = $(prms.editable);
         var dataUrl = editable.data("json-url");
@@ -243,42 +243,57 @@ var autoasync = (function ($, window, document, undefined) {
             autoasync.toggleAction({ container: section, templateName: tmpln, data: value });
         });
     };
-
+    /*Toggles an editable element with the replacement template and enhances and refreshes the appropriate elements and container lists.*/
     function toggleAction(prms) {
         var updated;
+        var edParent = prms.editable ? prms.editable.parent() : null;
+        var edParentDOM = edParent ? edParent.toArray()[0] : null,
+            buttonDOM = prms.button ? prms.button.toArray()[0] : null,
+            buttonTargetEditableDOM = prms.container ? prms.container.toArray()[0] : null;
+        var isSwap = prms.isUpdate || (!!prms.templateName
+            && !!buttonDOM && !!edParentDOM && !!buttonTargetEditableDOM
+            && !!$.contains(edParentDOM, buttonDOM)
+            && !!$.contains(buttonTargetEditableDOM, buttonDOM));
+        if (!isSwap && prms.container && $(edParent).children().length <= 1) {
+            prms.container.hide();
+        }   //hide container if this was the last item now disappearing.
+
         if (prms.templateName) {
-            if (prms.editable instanceof $ && prms.button instanceof $ && prms.editable.data("isNew") && prms.button.hasClass("link-button-cancel")) {
-                prms.editable.remove();
-                return prms;
-            }
-            updated = $($("#" + prms.templateName).render(prms.data));
+            updated = $($("#" + prms.templateName).render(prms.data || {}));
         } else if (prms.html) {
             updated = $(prms.html);
         } else {
-            return prms;
+            prms.editable.remove();
+            return prms; //nothing is replacing this item
         }
         updated.addClass("inline-editable").data("json-result-item", prms.data);
-        if (prms.editable instanceof $ && prms.editable.length > 0) {
-            if (prms.editable.data("isNew") && prms.isUpdate) {
-                updated.data("isNew", "true"); //replacing the new item on post result from url
-            }
-            prms.editable.before(updated).remove();
+
+        if (prms.insertOrder == "first") {
+            prms.container.prepend(updated);
+        } else if (prms.insertOrder == "last") {
+            prms.container.append(updated);
+        } else if (isSwap) {
+            //no change in position, target in same host as clicked button
+            prms.editable.before(updated);
         } else {
-            updated.data("isNew", "true");
-            if (prms.insertOrder == "first") {
-                prms.container.prepend(updated);
-            } else {
-                prms.container.append(updated);
-            }
+            //fallback value: position not specified, target is different container than clicked button.
+            prms.container.append(updated);
         }
-        $(updated.data("host-selector")).each(function (i, host) {
-            autoasync.refreshEditable({ editable: host, button: prms.button });
-        });
+        if (isSwap) {
+            prms.editable.remove();
+        }
+        prms.container.show(); //in case hidden
+
+        if (prms.button) {
+            $(updated.data("host-selector")).each(function(i, host) {
+                autoasync.refreshEditable({ editable: host, button: prms.button });
+            });
+        }
         autoasync.enhance(updated);
         prms.editable = updated;
         return prms;
     };
-	
+
     /* An asynchronous method (usually) to do the appropriate action for a given inline-editable-button */
     function clickButton(button, callback) {
         if (!(button instanceof $)) {
@@ -289,7 +304,7 @@ var autoasync = (function ($, window, document, undefined) {
         } /*child element was clicked inside the button*/
         var editable = button.data("editable-element") ? $(button.data("editable-element")) : button.closest(".inline-editable") || null,
             cntr = button.data("editable-container") ? $(button.data("editable-container")) : editable.closest(".inline-editable-host"),
-            json = editable == null ? null : editable.data("json-result-item") || (!!editable.data("json-var") ? eval(editable.data("json-var")) : null),
+            json = editable == null ? null : editable.data("json-result-item") || (!!editable.data("json-var") ? eval(editable.data("json-var")) : button.data()),
             form = button.closest("form"),
             formData = json,
             tmpln = button.data("template"),
@@ -324,6 +339,7 @@ var autoasync = (function ($, window, document, undefined) {
             if (togglePrms.templateName) {
                 button.data("ajax-submit-wait-message-disable", true);
             }
+            urlMethod = (urlMethod || "post").toLowerCase();
             var postData = formData,
                 postButtonId = button.attr('id');
             if (urlMethod == "get" && !postData) {
@@ -336,7 +352,7 @@ var autoasync = (function ($, window, document, undefined) {
                     postData[postButtonId] = postButtonId;
                 }
             }
-            autoasync.post({ data: postData, type: urlMethod || "post", cache: false, url: url, dataType: urlDataType },
+            autoasync.post({ data: urlMethod=="post"? json : postData, type: urlMethod, cache: false, url: url, dataType: urlDataType },
                 function (result) {
                     togglePrms.isUpdate = true;
                     if (!result.split && "success" in result) { /*true or false*/
@@ -404,24 +420,34 @@ var autoasync = (function ($, window, document, undefined) {
                             $.ajax({
                                 url: $(this.element).data("autocomplete-url"),
                                 dataType: 'json',
-                                type: 'post',
-                                data: $(this.element).closest('form').first().toObject($.extend({ timestamp: +new Date() }, request)),
+                                type: ($(this.element).data("autocomplete-url-method") || 'post'),
+                                data: $(this.element).closest('form').length > 0
+                                    ? $(this.element).closest('form').first().toObject({ json: $.extend({ timestamp: +new Date() }, request) })
+                                    : $.extend({ timestamp: +new Date() }, request),
                                 success: function (data) {
                                     response(data);
                                 }
                             });
                         }
-                    }).data("autocomplete")._renderItem = function (ul, item) {
+                    }).data("ui-autocomplete")._renderItem = function (ul, item) {
                         var tName = $(this.element).data("autocomplete-itemtemplate");
                         var valProp = $(this.element).data("autocomplete-itemvalue");
                         if (!item.value) {
                             item.value = (valProp) ? item[valProp] : ((item.Name) ? item.Name : item.name);
+                        }
+                        if (!item.label) {
+                            item.label = (valProp) ? item[valProp] : ((item.Name) ? item.Name : item.name);
                         }
                         return $("<li></li>")
                                 .data("item.autocomplete", item)
                                 .append($("<a></a>")["html"]((tName) ? $("#" + tName).render(item) : item.label))
                                 .appendTo(ul);
                     };
+                    if ($(this).autocomplete("option", "minLength") == 0) {
+                        $(this).focus(function () {
+                            $(this).data("ui-autocomplete").search($(this).val());
+                        });
+                    }
                 });
             }
         },
@@ -440,8 +466,10 @@ var autoasync = (function ($, window, document, undefined) {
                                 $.ajax({
                                     url: $(this.element).data("original").data("autocomplete-url"),
                                     dataType: 'json',
-                                    type: 'post',
-                                    data: $($(this.element).data("original")).closest('form').first().toObject($.extend({ timestamp: +new Date() }, request)),
+                                    type: ($(this.element).data("original").data("autocomplete-url-method") || 'post'),
+                                    data: ($(this.element).data("original")).closest('form').length > 0 
+                                        ? $($(this.element).data("original")).closest('form').first().toObject({ json: $.extend({ timestamp: +new Date() }, request) })
+                                        : $.extend({ timestamp: +new Date() }, request),
                                     success: function (data) {
                                         response(data);
                                     }
@@ -449,12 +477,15 @@ var autoasync = (function ($, window, document, undefined) {
                             }
                         }
                     });
-                    if ($(this).data("listbuilder")._tokenEditor.data("autocomplete")) {
-                        $(this).data("listbuilder")._tokenEditor.data("autocomplete")._renderItem = function (ul, item) {
+                    if ($(this).data("ui-listbuilder")._tokenEditor.data("ui-autocomplete")) {
+                        $(this).data("ui-listbuilder")._tokenEditor.data("ui-autocomplete")._renderItem = function (ul, item) {
                             var tName = $(this.element).data("original").data("autocomplete-itemtemplate");
                             var valProp = $(this.element).data("original").data("autocomplete-itemvalue");
                             if (!item.value) {
                                 item.value = (valProp) ? item[valProp] : ((item.Name) ? item.Name : item.name);
+                            }
+                            if (!item.label) {
+                                item.label = (valProp) ? item[valProp] : ((item.Name) ? item.Name : item.name);
                             }
                             return $("<li></li>")
                                 .data("item.autocomplete", item)
@@ -463,6 +494,13 @@ var autoasync = (function ($, window, document, undefined) {
                         };
                     }
                 });
+            }
+        },
+        "datepicker": {
+            enabled: true,
+            enhance: function (section) {
+                if (!$.prototype.datepicker) { return; }
+                $(section).find('.datepicker').datepicker();
             }
         },
         "pretty-date": {
@@ -595,10 +633,10 @@ var autoasync = (function ($, window, document, undefined) {
         },
         "inline-editable-host-updater": {
             enabled: true,
-            enhance: function(section) {
-                $(section).find(".inline-editable-host-updater").not(":submit").click(function(event) {
+            enhance: function (section) {
+                $(section).find(".inline-editable-host-updater").not(":submit").click(function (event) {
                     var updater = $(this);
-                    $(updater.data("host-selector")).each(function(i, host) {
+                    $(updater.data("host-selector")).each(function (i, host) {
                         autoasync.refreshEditable({ editable: host, button: updater });
                     });
                 });
@@ -610,7 +648,7 @@ var autoasync = (function ($, window, document, undefined) {
                 if (!(section instanceof $)) { section = $(section); }
 
                 section.find(".template-dialog").each(function (i, btn) {
-                    $(btn).unbind("click").click(function(event) {
+                    $(btn).unbind("click").click(function (event) {
                         var link = $(this);
                         var templateName = link.data("template");
                         if (!templateName) {
@@ -625,7 +663,7 @@ var autoasync = (function ($, window, document, undefined) {
                         $(content).dialog({
                             appendTo: host,
                             width: "auto",
-                            close: function() {
+                            close: function () {
                                 $(dialogId).dialog("destroy").remove();
                             }
                         });
