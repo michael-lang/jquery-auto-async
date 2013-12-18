@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Candor.jQuery.AutoAsync</id>
-    <version>3.1.0.31217</version>
+    <version>3.2.0.31218</version>
     <authors>Michael Lang</authors>
     <owners>Nexul Software LLC, Michael Lang</owners>
     <copyright>Copyright 2013 Michael Lang</copyright>
@@ -12,11 +12,12 @@
 	<title>Auto Async UI</title>
     <description>automatically enhances elements based on data-attributes or class names.  supports an asyncronous user interface.  This code is open source.</description>
     <releaseNotes>Changes:
-	3.1.0: * post function will now use a Web API error response text for display to user, with fallback to prior message logic.
+	3.2.0: * AJAX posted JSON object now removes data objects that are jQuery objects/widgets or functions (from button data attribute fall-back introduced in 3.1.0)
+	3.1.0: * post function will now use a Web API error response text for display to user, with fall-back to prior message logic.
 	* added datepicker plugin
 	* fix autocomplete and listbuilder async plugin for proper widget use
 	* consistent casing checks on form method
-	* on button click, the json data used has a final fallback value of the button's data attributes instead of null.
+	* on button click, the JSON data used has a final fall-back value of the button's data attributes instead of null.
 	* on view template toggle, it better handles the case of when 'cancel' type actions were for an add that should not toggle or if for an edit that should toggle back to a view.
 	3.0.0: * renamed method 'enhanceCallback' to 'addCallback'
 	* removed obsolete methods and plugins

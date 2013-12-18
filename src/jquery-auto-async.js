@@ -313,6 +313,11 @@ var autoasync = (function ($, window, document, undefined) {
             urlDataType = button.data("url-datatype") || "json",
             urlMethod = button.data("url-method"),
             clickCallbacks = [];
+        for (var prop in json) {
+            if (json[prop] instanceof $ || $.isFunction(json[prop]) || !!json[prop].eventNamespace) {
+                delete json[prop]; /*remove jquery items, functions, and jquery widgets*/
+            }
+        }
         clickCallbacks.push(function () {
             $(button.data("host-selector")).each(function (i, host) {
                 autoasync.refreshEditable({ editable: host, button: button });
