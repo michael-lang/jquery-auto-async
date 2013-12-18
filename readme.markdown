@@ -107,7 +107,7 @@ Note the template syntax for inserting data item property values into the genera
 - data-editable-container: Optional, defines a container elsewhere in document where the template should be inserted.  This is intended for things like an 'add' button to the list.  If not specified, the target container is the closest parent with class 'inline-editable-host'.  See use case 4 for example usage.
 - data-editable-element: Optional, A selector to an inline-editable element.  It is for edge cases when the button does not exist within the element being toggled to another state.  When not specified, the closest parent element with class 'inline-editable' is used.
 - data-insert-order: Optional, when specified as 'first' it sets if the replacement view template as the first inline editable within the target container inline editable host.  Any other value, or when missing puts the replacement template in the same order as the view being replaced, or if an insert/add it goes at the end by default.
-data-url-method: Optional. If specified it determines the http transport method to call the data-url.  'get' by default.
+- data-url-method: Optional. If specified it determines the http transport method to call the data-url.  'get' by default.
 
 Once the post to data-url is complete, the defined data-template will be bound again to the JSON item returned from the server.  This accounts for the server updating a calculated property, or just checking if it was updated by another user.
 
