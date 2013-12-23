@@ -314,7 +314,7 @@ var autoasync = (function ($, window, document, undefined) {
             urlMethod = button.data("url-method"),
             clickCallbacks = [];
         for (var prop in json) {
-            if (json[prop] instanceof $ || $.isFunction(json[prop]) || !!json[prop].eventNamespace) {
+            if (json[prop] instanceof $ || $.isFunction(json[prop]) || !!(json[prop] || {}).eventNamespace) {
                 delete json[prop]; /*remove jquery items, functions, and jquery widgets*/
             }
         }
