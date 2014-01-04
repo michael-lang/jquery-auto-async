@@ -360,9 +360,11 @@ var autoasync = (function ($, window, document, undefined) {
             autoasync.post({ data: urlMethod=="post"? json : postData, type: urlMethod, cache: false, url: url, dataType: urlDataType },
                 function (result) {
                     togglePrms.isUpdate = true;
-                    if (!result.split && "success" in result) { /*true or false*/
-                        if (result.item) {
-                            togglePrms.data = result.item; //item was updated altered by server
+                    if (!result.split) {
+                        if (result.item && "success" in result) {
+                            togglePrms.data = result.item; /*result has status and result data item*/
+                        } else {
+                            togglePrms.data = result; /*result is the updated data*/
                         }
                         if (result.templateName) {
                             togglePrms.templateName = result.templateName;
@@ -573,6 +575,7 @@ var autoasync = (function ($, window, document, undefined) {
                                     var gen = $($("#" + templateName).render(item));
                                     gen.addClass("repeatitem").data("json-result-item", item);
                                     list.append(gen);
+                                    autoasync.enhance($(gen));
                                 });
                             } else {
                                 list.append(data);
