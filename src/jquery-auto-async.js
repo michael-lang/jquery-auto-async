@@ -121,15 +121,22 @@ var autoasync = (function ($, window, document, undefined) {
                 ajaxParams.form = $(ajaxParams.source).closest('form').first();
             }
             if (ajaxParams.form instanceof $) {
-                var formData = ajaxParams.form.serialize();
+                var encType = ajaxParams.form.attr('enctype');
+                var formData = encType != 'multipart/form-data'
+                    ? ajaxParams.form.serialize()
+                    : new FormData(ajaxParams.form[0]);
                 if (ajaxParams.source instanceof $ && ajaxParams.source.is(":button,:submit")) {
-                    if (formData.length > 0 || ajaxParams.url.indexOf("?") > -1) {
-                        formData += "&";
+                    if (formData instanceof FormData) {
+                        formData.append(ajaxParams.source.attr("id"), ajaxParams.source.attr("id"));
                     } else {
-                        formData += "?";
+                        if (formData.length > 0 || ajaxParams.url.indexOf("?") > -1) {
+                            formData += "&";
+                        } else {
+                            formData += "?";
+                        }
+                        formData += ajaxParams.source.attr("id") + "=" + ajaxParams.source.attr("id");
+                        ajaxParams.form.find('#__EVENTTARGET').val(ajaxParams.source.attr("id"));
                     }
-                    formData += ajaxParams.source.attr("id") + "=" + ajaxParams.source.attr("id");
-                    ajaxParams.form.find('#__EVENTTARGET').val(ajaxParams.source.attr("id"));
                 }
                 ajaxParams.data = formData;
             }
@@ -156,6 +163,10 @@ var autoasync = (function ($, window, document, undefined) {
                 $(waitDialog).dialog("close").dialog("destroy").remove();
             }
         }, ajaxParams);
+        if (ajaxParams.data instanceof FormData) {
+            ajaxParams.contentType = false;
+            ajaxParams.processData = false;
+        }
         if (ajaxParams.data && ajaxParams.url) {
             $.ajax(ajaxParams);
         } else if ($.isFunction(callback)) {
@@ -325,7 +336,9 @@ var autoasync = (function ($, window, document, undefined) {
         });
         if (callback)
             clickCallbacks.push(callback);
+        var encType = '';
         if (form instanceof $ && form.length > 0) {
+            encType = form.attr('enctype');
             if (button instanceof $ && !button.hasClass("link-button-cancel")) {
                 if (!autoasync.isValidForm(button)) {
                     return;
@@ -336,7 +349,9 @@ var autoasync = (function ($, window, document, undefined) {
                 urlMethod = urlMethod || form.attr("method");
             }
             json = form.toObject({ json: json });
-            formData = form.serialize();
+            formData = encType != 'multipart/form-data'
+                ? form.serialize()
+                : new FormData(form[0]);
         }
         var togglePrms = { container: cntr, editable: editable, button: button, form: form, templateName: tmpln, data: json, url: url, insertOrder: insertOrder };
         togglePrms = autoasync.toggleAction(togglePrms);
@@ -353,11 +368,13 @@ var autoasync = (function ($, window, document, undefined) {
             if (postButtonId && postData) {
                 if (postData.split) {
                     postData = postData + "&" + postButtonId + "=" + postButtonId;
+                } else if (postData instanceof FormData) {
+                    postData.append(postButtonId, postButtonId);
                 } else {
                     postData[postButtonId] = postButtonId;
                 }
             }
-            autoasync.post({ data: urlMethod=="post"? json : postData, type: urlMethod, cache: false, url: url, dataType: urlDataType },
+            autoasync.post({ data: urlMethod == "post" && encType != 'multipart/form-data' ? json : postData, type: urlMethod, cache: false, url: url, dataType: urlDataType },
                 function (result) {
                     togglePrms.isUpdate = true;
                     if (!result.split) {
