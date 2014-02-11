@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Candor.jQuery.AutoAsync</id>
-    <version>3.4.0.40104</version>
+    <version>3.5.0.40210</version>
     <authors>Michael Lang</authors>
     <owners>Nexul Software LLC, Michael Lang</owners>
     <copyright>Copyright 2013 Michael Lang</copyright>
@@ -10,8 +10,9 @@
     <licenseUrl>https://github.com/michael-lang/jquery-auto-async/blob/master/MIT-LICENSE.txt</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
 	<title>Auto Async UI</title>
-    <description>automatically enhances elements based on data-attributes or class names.  supports an asyncronous user interface.  This code is open source.</description>
+    <description>automatically enhances elements based on data-attributes or class names.  supports an asynchronous user interface.  This code is open source.</description>
     <releaseNotes>Changes:
+	3.5.0: * form post can now handle multi-part forms with mixed file uploads and normal form fields.  Fallback to prior behavior when forms do not have the enctype='multipart/form-data'
 	3.4.0: * datarepeater elements will now call 'enhance' on each item after adding to the repeat container.
 	* the main button click method AJAX post response will now recognize a Web API style response if a JSON object response object does not contain a 'success' property.  A 'success' property will trigger fallback to current functionality of expecting a property named 'item'.  A non-JSON string response will still be treated as replacement html. These changes are backwards compatible.
 	3.3.0: * Fix potential null reference error preparing data to post after button click
