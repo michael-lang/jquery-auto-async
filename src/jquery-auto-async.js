@@ -49,12 +49,16 @@
 var autoasync = (function ($, window, document, undefined) {
     var attr = {};
     var callbacks = [];
+    var docInit = false;
 
     function init(callback) {
         if (callback) {
             callbacks.push(callback);
         }
-        enhance($(document));
+        if (!docInit) {
+            docInit = true;
+            enhance($(document), "document");
+        }
     };
     function urlRemoveParams(url, prms) {
         var hash, vars = [], u = url.split('?');
@@ -76,15 +80,15 @@ var autoasync = (function ($, window, document, undefined) {
         callbacks.push(callback);
     };
 
-    function enhance(section) {
+    function enhance(section, enhanceType) {
         $.each(attr, function (name, item) {
             if (($.isFunction(item.enabled) && item.enabled())
                 || item.enabled == undefined || item.enabled) {
-                item.enhance(section);
+                item.enhance(section, enhanceType);
             }
         });
         callbacks.forEach(function (item) {
-            item({ element: section });
+            item({ element: section, enhanceType: enhanceType });
         });
     };
 
@@ -208,7 +212,8 @@ var autoasync = (function ($, window, document, undefined) {
                 success: function (msg) {
                     editable.find(".inline-editable").remove();
                     editable.find(".repeatitem").remove();
-                    autoasync.appendItems(editable, msg.Items || msg.items || [].concat(msg));
+                    var dataItems = !msg ? msg : (msg.Items || msg.items || [].concat(msg));
+                    autoasync.appendItems(editable, dataItems);
                 },
                 error: function (jqXhr, textStatus, errorThrown) {
                     autoasync.resultMessage({ element: editable, success: false, message: "Server side call failed. " + errorThrown });
@@ -224,14 +229,9 @@ var autoasync = (function ($, window, document, undefined) {
             || $(elm).parents("form").validate().element(elm));
     };
 
-    function isValidForm(elm) {
+    function isValidInputGroup(group) {
         var valid = true;
-
-        if ($(elm).parents("form") == undefined
-            || $(elm).parents("form").validate == undefined) {
-            return true;
-        }
-        $(elm).parents("form").find(":input:not(:hidden)").each(function (index, el) {
+        $(group).find(":input:not(:hidden)").each(function (index, el) {
             el = $(el);
             if (el.is(":not(:visible)")) {
                 el.val("");
@@ -248,11 +248,31 @@ var autoasync = (function ($, window, document, undefined) {
         return valid;
     };
 
+    function isValidForm(elm) {
+        var valid = true;
+
+        if ($(elm).parents("form") == undefined
+            || $(elm).parents("form").validate == undefined) {
+            return true;
+        }
+        return isValidInputGroup($(elm).parents("form"));
+    };
+
     function appendItems(section, items) {
         var tmpln = $(section).data("template"); //default template is on list node
-        $.each(items, function (index, value) {
-            autoasync.toggleAction({ container: section, templateName: tmpln, data: value });
-        });
+        var noneTmpln = $(section).data("template-noitems"); //no items template is on list node
+        var noneButton = $(section).data("template-noitems-button"); //no items template is on list node
+        var insertOrder = $(section).data("insert-order");
+        var existingItems = section.find(".inline-editable, .repeatitem");
+        if (items && items.length > 0) {
+            $.each(items, function (index, value) {
+                autoasync.toggleAction({ container: section, insertOrder: insertOrder, templateName: tmpln, data: value });
+            });
+        } else if (noneButton && existingItems.length == 0) {
+            setTimeout(function () { $(noneButton).click(); }, 100);
+        } else if (noneTmpln && existingItems.length == 0) {
+            autoasync.toggleAction({ container: section, insertOrder: insertOrder, templateName: noneTmpln, data: $(section).data() });
+        }
     };
     /*Toggles an editable element with the replacement template and enhances and refreshes the appropriate elements and container lists.*/
     function toggleAction(prms) {
@@ -296,7 +316,7 @@ var autoasync = (function ($, window, document, undefined) {
         prms.container.show(); //in case hidden
 
         if (prms.button) {
-            $(updated.data("host-selector")).each(function(i, host) {
+            $(updated.data("host-selector")).each(function (i, host) {
                 autoasync.refreshEditable({ editable: host, button: prms.button });
             });
         }
@@ -336,10 +356,15 @@ var autoasync = (function ($, window, document, undefined) {
         });
         if (callback)
             clickCallbacks.push(callback);
+
+        clickCallbacks.push(function () {
+            /*If the container is now empty, then check for noitems template or button*/
+            appendItems(cntr);
+        });
         var encType = '';
         if (form instanceof $ && form.length > 0) {
             encType = form.attr('enctype');
-            if (button instanceof $ && !button.hasClass("link-button-cancel")) {
+            if (button instanceof $ && !button.hasClass("link-button-cancel") && !button.hasClass("novalidate")) {
                 if (!autoasync.isValidForm(button)) {
                     return;
                 }
@@ -378,16 +403,30 @@ var autoasync = (function ($, window, document, undefined) {
                 function (result) {
                     togglePrms.isUpdate = true;
                     if (!result.split) {
-                        if (result.item && "success" in result) {
-                            togglePrms.data = result.item; /*result has status and result data item*/
-                        } else {
-                            togglePrms.data = result; /*result is the updated data*/
+                        if ($.cookie && result.cookie && result.cookie && result.cookie.length > 0) {
+                            $.each(result.cookie, function (index, item) {
+                                $.cookie(item.name, item.value, { expires: item.expires || 7, path: item.path || '/' });
+                            });
                         }
+                        if (result.redirect && result.redirect.split) {
+                            window.location.href = result.redirect;
+                        }
+                        if (result.reload) {
+                            window.location.href = window.location.href;
+                        }
+                        var dataItems = result.Items || result.items;
+                        if (!dataItems || dataItems.length == 0)
+                            dataItems = [].concat(result.Item || result.item || result);
+                        togglePrms.data = dataItems[0];
                         if (result.templateName) {
                             togglePrms.templateName = result.templateName;
                         }
                         autoasync.toggleAction(togglePrms);
                         autoasync.resultMessage($.extend({}, result, { element: togglePrms.editable }));
+                        if (dataItems.length > 1) {
+                            dataItems = dataItems.slice(1);
+                            autoasync.appendItems(cntr, dataItems);
+                        }
                     } else {
                         togglePrms.html = result;
                         autoasync.toggleAction(togglePrms);
@@ -417,6 +456,7 @@ var autoasync = (function ($, window, document, undefined) {
         resultMessage: resultMessage,
         refreshEditable: refreshEditable,
         isValid: isValid,
+        isValidInputGroup: isValidInputGroup,
         isValidForm: isValidForm,
         appendItems: appendItems,
         toggleAction: toggleAction,
@@ -449,7 +489,7 @@ var autoasync = (function ($, window, document, undefined) {
                                     ? $(this.element).closest('form').first().toObject({ json: $.extend({ timestamp: +new Date() }, request) })
                                     : $.extend({ timestamp: +new Date() }, request),
                                 success: function (data) {
-                                    response(data);
+                                    response(data.Items || data.items || [].concat(data));
                                 }
                             });
                         }
@@ -491,11 +531,11 @@ var autoasync = (function ($, window, document, undefined) {
                                     url: $(this.element).data("original").data("autocomplete-url"),
                                     dataType: 'json',
                                     type: ($(this.element).data("original").data("autocomplete-url-method") || 'post'),
-                                    data: ($(this.element).data("original")).closest('form').length > 0 
+                                    data: ($(this.element).data("original")).closest('form').length > 0
                                         ? $($(this.element).data("original")).closest('form').first().toObject({ json: $.extend({ timestamp: +new Date() }, request) })
                                         : $.extend({ timestamp: +new Date() }, request),
                                     success: function (data) {
-                                        response(data);
+                                        response(data.Items || data.items || [].concat(data));
                                     }
                                 });
                             }
@@ -517,6 +557,67 @@ var autoasync = (function ($, window, document, undefined) {
                                 .appendTo(ul);
                         };
                     }
+                });
+            }
+        },
+        "listbuildersource": {
+            enabled: true,
+            enhance: function (section) {
+                $(section).find('.list-builder-source').each(function () {
+                    $(this).change(function () {
+                        var chk = $($(this)[0]);
+                        var buildElm = $("#" + chk.data("list-builder-id"));
+                        if (buildElm.length > 0) {
+                            var others = $("input[data-list-builder-id='" + chk.data("list-builder-id") + "']");
+                            var buildVal = chk.data("list-builder-val");
+                            if (chk.is(':checked')) {
+                                var updated = buildElm.val() + buildVal + ",";
+                                buildElm.val(updated).change();
+                            }
+                            else {
+                                var updated = buildElm.val().replace(buildVal + ",", "")
+                                buildElm.val(updated).change();
+                            }
+                        }
+                        var totalElm = $("#" + chk.data("total-id"));
+                        if (totalElm.length > 0) {
+                            var others = $("input[data-total-id='" + chk.data("total-id") + "']");
+                            var total = 0;
+                            for (var t = 0; t < others.length; t++) {
+                                if ($(others[t]).is(':checked')) {
+                                    var tVal = $(others[t]).data("total-val");
+                                    if (parseFloat(tVal) != NaN) {
+                                        total += parseFloat(tVal);
+                                    }
+                                }
+                            }
+                            totalElm.val(total.toFixed(2)).change();
+                        }
+                    });
+                });
+            }
+        },
+        "changeupdate": {
+            enabled: true,
+            enhance: function(section) {
+                $(section).find('.calulation-trigger').each(function () {
+                    $(this).change(function () {
+                        var destItems = $($(this).data("change-update"));
+                        var form = $(this).closest("form");
+                        var formData = form.toObject();
+                        for (var d = 0; d < destItems.length; d++) {
+                            var exp = $(destItems[d]).data("change-update-expression");
+                            var tmplName = "bind-tmpl-" + $(destItems[d]).attr("id");
+                            if (!$.templates[tmplName]) {
+                                $.templates(tmplName, exp);
+                            }
+                            var expVal = $.templates[tmplName].render(formData);
+                            if (parseFloat(expVal) != NaN) {
+                                expVal = parseFloat(expVal).toFixed(2);
+                            }
+                            $(destItems[d]).val(expVal).change();
+                        }
+                    });
                 });
             }
         },
@@ -574,35 +675,114 @@ var autoasync = (function ($, window, document, undefined) {
                     });
             }
         },
-        "datarepeater": {
+        "carousel": {
             enabled: true,
             enhance: function (section) {
+                if (!$.fn.carousel && !$.carousel) { return; }
+                var carousels = section.hasClass("carousel") ? section : section.find(".carousel")
+                carousels.each(function () {
+                    var $carousel = $(this)
+                    if ($carousel.find('.carousel-indicators').children().length == 0) { return; }
+                    $carousel.carousel();
+                })
+            }
+        },
+        "datarepeater": {
+            enabled: true,
+            enhance: function (section, enhanceTypeSource) {
+                if (enhanceTypeSource == "list") {
+                    return; //called from here
+                } //datarepeater may be refreshed, but not add/remove by button click like the inline-editable
                 $(section).find(".datarepeater").each(function () {
                     var list = $(this);
+                    var dataVar = list.data("json-var");
                     var dataUrl = list.data("json-url");
-                    var templateName = list.data("template");
-                    if (!dataUrl) { return; }
-                    $.ajax({
-                        cache: false, type: "get", url: dataUrl, dataType: 'json',
-                        success: function (msg) {
-                            var data = (msg.Items || msg.items || [].concat(msg));
-                            list.find(".repeatitem").remove();
-                            if (templateName) {
-                                $.each(data, function (index, item) {
-                                    var gen = $($("#" + templateName).render(item));
-                                    gen.addClass("repeatitem").data("json-result-item", item);
-                                    list.append(gen);
-                                    autoasync.enhance($(gen));
-                                });
-                            } else {
-                                list.append(data);
-                            }
-                        },
-                        error: function (jqXhr, textStatus, errorThrown) {
-                            autoasync.resultMessage({ element: list, succes: false, message: "Server side call failed. " + errorThrown });
+                    var enhanceType = list.data("enhance-type") || "item";
+                    var dataTargets = $(list.data("targets") || list);
+                    if (dataVar) {
+                        var data = eval(dataVar);
+                        if (data) {
+                            var dataItems = data.Items || data.items || [].concat(data);
+                            dataTargets.each(function (index, dataTarget) {
+                                autoasync.attr["datarepeater"].enhancelist(dataTarget, dataItems, list);
+                            });
+                            if (enhanceType == "list")
+                                autoasync.enhance(list, enhanceType);
+                            return;
                         }
+                    }
+                    if (dataUrl) {
+                        $.ajax({
+                            cache: false,
+                            type: "get",
+                            url: dataUrl,
+                            dataType: 'json',
+                            success: function (msg) {
+                                var dataItems = !msg ? msg : (msg.Items || msg.items || [].concat(msg));
+                                dataTargets.each(function (index, dataTarget) {
+                                    autoasync.attr["datarepeater"].enhancelist(dataTarget, dataItems, list);
+                                });
+                                if (enhanceType == "list")
+                                    autoasync.enhance(list, enhanceType);
+                            },
+                            error: function (jqXhr, textStatus, errorThrown) {
+                                autoasync.resultMessage({ element: list, succes: false, message: "Server side call failed. " + errorThrown });
+                            }
+                        });
+                        return;
+                    }
+                    dataTargets.each(function (index, dataTarget) {
+                        autoasync.attr["datarepeater"].enhancelist(dataTarget, dataTarget.data(), list);
                     });
+                    if (enhanceType == "list")
+                        autoasync.enhance(list, enhanceType);
                 });
+            },
+            enhancelist: function (list, dataItems, repeater) {
+                list = $(list);
+                repeater = $(repeater);
+                var templateName = list.data("template") || (repeater || $).data("template");
+                var wrapEach = list.data("wrap-each");
+                var noItemsTemplateName = list.data("template-noitems") || (repeater || $).data("template-noitems");
+                var noItemsButton = list.data("template-noitems-button") || (repeater || $).data("template-noitems-button");
+                var insertOrder = list.data("insert-order") || (repeater || $).data("insert-order");
+                var enhanceType = list.data("enhance-type") || (repeater || $).data("enhance-type") || "item";
+
+                list.find(".repeatitem, .inline-editable").remove();
+                if (templateName) {
+                    var begin = list.children().first();
+                    if (dataItems && dataItems.length) {
+                        $.each(dataItems, function (index, item) {
+                            if (wrapEach) {
+                                item = { index: index, item: item };
+                            }
+                            var gen = $($("#" + templateName).render(item));
+                            gen.addClass("repeatitem").data("json-result-item", item);
+                            if (insertOrder == "first" && begin.length > 0) {
+                                begin.before(gen);
+                            } else {
+                                list.append(gen);
+                            }
+                            if (enhanceType != "list")
+                                autoasync.enhance(gen, enhanceType);
+                        });
+                    } else if (noItemsButton) {
+                        setTimeout(function () { $(noItemsButton).click(); }, 100);
+                    } else if (noItemsTemplateName) {
+                        var gen = $($("#" + noItemsTemplateName).render($(list).data()));
+                        gen.addClass("repeatitem");
+                        if (insertOrder == "first" && begin.length > 0) {
+                            begin.before(gen);
+                        } else {
+                            list.append(gen);
+                        }
+                        if (enhanceType != "list")
+                            autoasync.enhance(gen, enhanceType);
+                    }
+                } else if (dataItems.substring) {
+                    list.append(dataItems); /*returned html*/
+                    autoasync.enhance(list, enhanceType);
+                }
             }
         },
         "inline-editable": {
@@ -614,23 +794,32 @@ var autoasync = (function ($, window, document, undefined) {
                     var list = $(this);
                     var dataVar = list.data("json-var");
                     var dataUrl = list.data("json-url");
+                    var templateName = list.data("template");
                     if (dataVar) {
                         var data = eval(dataVar);
                         if (data) {
                             list.find(".inline-editable").remove();
-                            autoasync.appendItems(list, data.Items || data.items || [].concat(data));
+                            var dataItems = data.Items || data.items || [].concat(data);
+                            autoasync.appendItems(list, dataItems);
                         }
                     } else if (dataUrl) {
                         $.ajax({
-                            cache: false, type: "get", url: dataUrl, dataType: 'json',
+                            cache: false,
+                            type: "get",
+                            url: dataUrl,
+                            dataType: 'json',
                             success: function (msg) {
                                 list.find(".inline-editable").remove();
-                                autoasync.appendItems(list, msg.Items || msg.items || [].concat(msg));
+                                var dataItems = !msg ? msg : (msg.Items || msg.items || [].concat(msg));
+                                autoasync.appendItems(list, dataItems);
                             },
                             error: function (jqXhr, textStatus, errorThrown) {
                                 autoasync.resultMessage({ element: list, succes: false, message: "Server side call failed. " + errorThrown });
                             }
                         });
+                    } else if (templateName) {
+                        list.find(".inline-editable").remove();
+                        autoasync.appendItems(list, list.data());
                     }
                 });
             }
@@ -646,6 +835,9 @@ var autoasync = (function ($, window, document, undefined) {
                     if (cntr == undefined || cntr.length == 0) {
                         return;
                     }
+                    if (btn.hasClass("bound-inline-editable"))
+                        return; /*recursive datarepeaters and inline-editable items cause the inner buttons to be enhances multiple times*/
+
                     btn.bind("click", function (event) {
                         event.preventDefault();
                         autoasync.clickButton(event.target);
@@ -653,6 +845,7 @@ var autoasync = (function ($, window, document, undefined) {
                     btn.closest("form").submit(function () {
                         return false; //buttons no longer submit, only do custom click above
                     });
+                    btn.addClass("bound-inline-editable");
                 });
             }
         },
