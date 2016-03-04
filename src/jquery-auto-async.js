@@ -185,13 +185,17 @@ var autoasync = (function ($, window, document, undefined) {
         var doneMarkup = $("<span></span>")
             .html(prms.message ? prms.message : "Success")
             .attr("data-rand", Math.random());
+        if (!prms || prms.success == undefined)
+            return;
         if (prms.success) {
-            prms.element.find(".msg").addClass("ui-state-highlight").removeClass("ui-state-error").append(doneMarkup);
+            if (prms.showfailureOnly)
+                return;
+            prms.element.find(".msg").addClass("text-default").removeClass("text-danger").append(doneMarkup);
             doneMarkup.fadeOut(prms.success ? 5000 : 30000, function () {
                 prms.element.find(".msg").empty();
             });
         } else {
-            prms.element.find(".msg").addClass("ui-state-error").removeClass("ui-state-highlight").append(doneMarkup);
+            prms.element.find(".msg").addClass("text-danger").removeClass("text-default").append(doneMarkup);
         }
     };
 
@@ -200,11 +204,16 @@ var autoasync = (function ($, window, document, undefined) {
         var dataUrl = editable.data("json-url");
         if (dataUrl) {
             var data = {};
-            $.each(prms.button.data(), function (key, value) {
-                if (typeof value === "string") {
-                    data[key] = value;
-                }
-            });
+            if (prms.button.is(":submit")) {
+                var form = prms.button.closest("form");
+                data = form.toObject();
+            } else {
+                $.each(prms.button.data(), function (key, value) {
+                    if (typeof value === "string") {
+                        data[key] = value;
+                    }
+                });
+            }
             dataUrl = autoasync.urlRemoveParams(dataUrl, data);
             $.ajax({
                 cache: false, type: "get", url: dataUrl, dataType: 'json',
@@ -212,6 +221,7 @@ var autoasync = (function ($, window, document, undefined) {
                 success: function (msg) {
                     editable.find(".inline-editable").remove();
                     editable.find(".repeatitem").remove();
+                    autoasync.resultMessage($.extend({}, msg, { showfailureOnly: true, element:editable }));
                     var dataItems = !msg ? msg : (msg.Items || msg.items || [].concat(msg));
                     autoasync.appendItems(editable, dataItems);
                 },
@@ -268,10 +278,14 @@ var autoasync = (function ($, window, document, undefined) {
             $.each(items, function (index, value) {
                 autoasync.toggleAction({ container: section, insertOrder: insertOrder, templateName: tmpln, data: value });
             });
+            $(section).trigger("updated", [{container: section, data: items}]);
         } else if (noneButton && existingItems.length == 0) {
             setTimeout(function () { $(noneButton).click(); }, 100);
         } else if (noneTmpln && existingItems.length == 0) {
             autoasync.toggleAction({ container: section, insertOrder: insertOrder, templateName: noneTmpln, data: $(section).data() });
+            $(section).trigger("updated", [{ container: section, data: items }]);
+        } else {
+            $(section).trigger("updated", [{ container: section, data: items }]);
         }
     };
     /*Toggles an editable element with the replacement template and enhances and refreshes the appropriate elements and container lists.*/
@@ -836,11 +850,13 @@ var autoasync = (function ($, window, document, undefined) {
                         return;
                     }
                     if (btn.hasClass("bound-inline-editable"))
-                        return; /*recursive datarepeaters and inline-editable items cause the inner buttons to be enhances multiple times*/
+                        return; /*recursive datarepeaters and inline-editable items cause the inner buttons to be enhanced multiple times*/
 
                     btn.bind("click", function (event) {
+                        btn.attr("disabled", "disabled");
                         event.preventDefault();
                         autoasync.clickButton(event.target);
+                        btn.removeAttr("disabled");
                     });
                     btn.closest("form").submit(function () {
                         return false; //buttons no longer submit, only do custom click above
@@ -849,12 +865,53 @@ var autoasync = (function ($, window, document, undefined) {
                 });
             }
         },
+        "inline-editable-header": {
+            enabled: true,
+            enhance: function (section) {
+                if (!(section instanceof $)) { section = $(section); }
+                
+                var lists = section.hasClass("inline-editable-host") ? section : section.find(".inline-editable-host");
+                lists.each(function () {
+                    var list = $(this);
+                    var header = list.data("editable-header");
+                    if (header) {
+                        list.bind("updated", function (event, prms) {
+                            prms.header = header;
+                            autoasync.attr["inline-editable-header"].update(prms);
+                        });
+                        autoasync.attr["inline-editable-header"].update({container:list, header: header});
+                    }
+                });
+            },
+            update: function(prms) {
+                if (!prms || !prms.header || !prms.container) {
+                    return;
+                }
+                $(prms.header).each(function () {
+                    var header = $(this);
+                    var headerTmpl = $(header).data("template");
+                    if (!headerTmpl) {
+                        return;
+                    }
+                    var data = {
+                        header: $(header).data(),
+                        host: $(prms.container).data(),
+                        count: $(prms.container).find(".inline-editable").length
+                    };
+                    var updated = $($("#" + headerTmpl).render(data));
+                    $(header).empty();
+                    $(header).append(updated);
+                    autoasync.enhance($(updated));
+                });
+            }
+        },
         "inline-editable-host-updater": {
             enabled: true,
             enhance: function (section) {
-                $(section).find(".inline-editable-host-updater").not(":submit").click(function (event) {
+                $(section).find(".inline-editable-host-updater").click(function (event) {
                     var updater = $(this);
-                    $(updater.data("host-selector")).each(function (i, host) {
+                    event.preventDefault();
+                    $(updater.data("host-selector")).each(function(i, host) {
                         autoasync.refreshEditable({ editable: host, button: updater });
                     });
                 });

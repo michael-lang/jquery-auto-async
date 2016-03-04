@@ -263,6 +263,79 @@ Here are the item templates used by each comment list.  The partial view shows m
         </span>
     </script>
 	
+Use Case 5: Conditional header add button for a list:
+----------------------------------
+This use case covers if you want to have a header of information above an editable list that changes based on the number of items in the list.
+Take for example a software as a service that charges based on the number of users paid on your account.  You buy user credits and then you
+can add users up to the amount of credits you have purchased.  In this sample, a button to add a member is shown above the list, and when no credits
+are left, a notice and link to buy more credits is shown at the bottom of the list.
+
+MVC Razor view partial:
+
+			<div class="row inline-editable-header member-header" data-template="MemberHeader"
+                 data-editable-host=".member-list">
+                <div class="col-md-12">
+                </div>
+            </div>
+			
+            <div class="row inline-editable-host member-list"
+                 data-template="MemberListItem"
+                 data-template-noitems="MemberListItemNone"
+                 data-json-url="/api/family/members/@Model.Family.FamilyId"
+                 data-editable-header=".member-header, .member-footer">
+                <div class="col-md-12 inline-editable">
+                    <div class="note note-info">
+                        <i class="fa fa-spinner fa-spin"></i>
+                        Loading Members...
+                    </div>
+                </div>
+            </div>
+			
+            <div class="row inline-editable-header member-footer" data-template="MemberFooter"
+                 data-editable-host=".member-list">
+                <div class="col-md-12">
+                </div>
+            </div>
+
+View templates referenced by the cshml Razor view:
+
+This first template inserts at page load a value of the number of paid user credits, with @(Model.Family.PaidUserCount)
+Each time the button is pressed an Add template is added at the start of the list (with data-insert-order="first"), then
+this header (and footer) is updated; A 'count' property is included in the model bound to these templates to determine
+if the button is still displayed.  Each time the button text is updated with the number of users that can still be added.
+
+    <script id="MemberHeader" type="text/x-jQuery-tmpl">
+        <div class="col-md-12">
+            {{if count < @(Model.Family.PaidUserCount)}}
+            <a href="#" class="btn btn-info inline-editable-button"
+               data-template="MemberAdd" data-insert-order="first"
+               data-editable-container=".member-list">Add Member ({{:@(Model.Family.PaidUserCount)-count}} left)</a>
+            {{/if}}
+        </div>
+    </script>
+
+The following footer to the list will show a message if no credits remain, with a link to buy more credits.
+	
+    <script id="MemberFooter" type="text/x-jQuery-tmpl">
+        <div class="col-md-12">
+            {{if count >= @(Model.Family.PaidUserCount)}}
+            <div class="note note-warning">
+                <p>
+                    You have reached your plan member limit of @(Model.Family.PaidUserCount).  
+                    You can add more members buy purchasing member credits.
+                </p>
+                <p>
+                    <a href="@Url.Action(MVC.AccountPersonal.ProvisionFamilyMembers(Request.RawUrl, 1))"
+                       class="btn btn-info">Purchase Credits Now</a>
+                </p>
+            </div>
+            {{/if}}
+        </div>
+    </script>
+	
+If after the user presses Add, they press 'Cancel' on the add member view the header and footer are updated again with one less
+in the count since the list will have removed that add template without added a new member.
+	
 Built in enhancements (plug-ins)
 =====================
 
@@ -324,6 +397,14 @@ inlineeditablebuttons
 ---------------------
 See the documentation use cases above for how this works in detail.  Any element with class "inline-editable-button" applied that has a data-editable-container attribute pointing to a valid selector, or that is within an element with class "inline-editable-host" will trigger the auto-async button functionality described in the use cases above; also form posts for these buttons will be prevented since they will instead be AJAX posts.
  
+inline-editable-header
+---------------------
+See the documentation use cases above for how this works in detail.  
+A header, footer, or any page area that displays some information or context sensitive commands about a list within an inline-editable-host area.
+For instance, this can be used to allow only a certain number of items to be added to a list, 
+since the header can contain an inline-editable-button to add an item to the host when count is less than X, 
+and a footer could then be used to display a 'buy credits' message when count >= X.
+
 datarepeater
 ------------
 See the documentation use cases above for how this works in detail.  Any element with class "datarepeater" applied will become an auto-async data repeater.

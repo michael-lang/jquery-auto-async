@@ -12,6 +12,9 @@
 	<title>Auto Async UI</title>
     <description>automatically enhances elements based on data-attributes or class names.  supports an asynchronous user interface.  This code is open source.</description>
     <releaseNotes>Changes:
+	4.1.0: * New Plugin: inline-editable-header - a section that can be updated each time an item is added or removed from an inline-editable-host, the template model contains data about the list.
+	* changed css style used for showing error messages from a JSON response to a bootstrap text-danger or text-default as appropriate.
+	* minor bugs fixed, plus now editable buttons now disable during update and then re-enable to prevent double submissions.
 	4.0.0: * New Plugins: listbuildersource, changeupdate, enhancelist, wizard, and carousel (for boostrapper carousels).
 	* Lots of new use cases enabled with new options in data attributes and in ajax json responses.  See the related github commit comment for more details.  https://github.com/michael-lang/jquery-auto-async/commit/d16cbdc3847de4545a52123d28949c8d829f63d5
 	3.5.0: * form post can now handle multi-part forms with mixed file uploads and normal form fields.  Fallback to prior behavior when forms do not have the enctype='multipart/form-data'
