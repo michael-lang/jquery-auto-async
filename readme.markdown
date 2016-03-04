@@ -265,6 +265,7 @@ Here are the item templates used by each comment list.  The partial view shows m
 	
 Use Case 5: Conditional header add button for a list:
 ----------------------------------
+
 This use case covers if you want to have a header of information above an editable list that changes based on the number of items in the list.
 Take for example a software as a service that charges based on the number of users paid on your account.  You buy user credits and then you
 can add users up to the amount of credits you have purchased.  In this sample, a button to add a member is shown above the list, and when no credits
@@ -333,8 +334,107 @@ The following footer to the list will show a message if no credits remain, with 
         </div>
     </script>
 	
-If after the user presses Add, they press 'Cancel' on the add member view the header and footer are updated again with one less
-in the count since the list will have removed that add template without added a new member.
+If after the user presses Add, and then on the add template they press 'Cancel', the header and footer are updated again with one less
+in the count.
+
+Use case 6: Checkbox arrays updating a hidden field
+----------------------------------
+
+How many times have you written javascript to update a hidden field with identifiers of all the items checked in a list of checkboxes?
+Why repeat what you can do once.  The list-builder-source plugin does this by decorating the checkboxes and destination input with attributes.
+
+Here is a sample table that contains our list of checkboxes.  This list of checkboxes could also easily be created by added items to am 'inline-editable-host'.
+These checkboxes have more attributes than needed for this simple example, but it will be built upon in the next use case sample #7.
+
+			<tbody>
+                @foreach (var svc in Model.Services.Items)
+                {
+                    <tr id="service-@(svc.ActionId)">
+                        <td>
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" class="list-builder-source"
+                                           name="service-@(svc.ActionId)" id="service-@(svc.ActionId)"
+                                           data-list-builder-id="AuditServiceActionIds"
+                                           data-list-builder-val="@(svc.ActionId)"
+                                           data-total-id="TotalServiceValuation"
+                                           data-total-val="@svc.Valuation" />
+                                    <span class="lbl">@svc.ActionId</span>
+                                </label>
+                            </div>
+                        </td>
+                        <td>@svc.Valuation.ToString("C")</td>
+                        <td>...</td>
+                    </tr>
+                }
+            </tbody>
+
+Elsewhere in the page is the textbox to be updated, 'AuditServiceActionIds'. In the checkbox above, the attribute 'data-list-builder-id' value
+defines the id of the element to be updated with the checked checkboxes as a delimited list.  The 'data-list-builder-val' value defines the value 
+added into the textbox when the checkbox is checked.
+		
+		<input type="text" readonly="readonly" id="TotalServiceValuation" name="TotalServiceValuation" value=""
+               placeholder="(calculated)" class="form-control calulation-trigger"
+               data-change-update="#TotalDue" />
+        <input type="hidden" id="AuditServiceActionIds" name="AuditServiceActionIds" value="" />
+
+In the next use case, #7, you'll see what the TotalServiceValuation input is for.
+		
+Use case 7: text box formulas
+----------------------------------
+
+This use case allows you to create a readonly textbox of which the value is a calculation of other textboxes, or even of total values from checked
+items in a list.  The list portion is why in the last use case #6 you see a 'TotalServiceValuation' textbox.  In this example, users can check any
+number of the items in the checkbox list, each with a defined value on the item.  The value of each item is displayed in the table in a user friendly
+format, but is also available as a number in attribute 'data-total-val'.
+
+The first step in the calculation is to add the prices from the checked items into a textbox.  Ont the checked item, 'data-total-id' defines the
+input to contain the summed values of all checked items, and the 'data-total-val' specifies the value of each checked item.  The destination textbox
+is readonly to prevent the user from typing in a value.  If you wish to allow the user to add/subtract an adjustment value to the calculated total,
+you can do this by adding a discount/adjustment textbox and use that value in the calculation of the total.  However, the calculated value cannot be changed
+from being a calculation.
+
+Lets define some more textboxes to be used in our formula.  Some are readonly sub-totals, and others adjust the amount due.
+
+First is another summation that is populated from another checkbox list (not shown for brevity), identical to the one above except for the ids/names:
+
+		<input type="text" readonly="readonly" id="TotalServiceValuation" name="TotalServiceValuation" value=""
+               placeholder="(calculated)" class="form-control calulation-trigger"
+               data-change-update="#TotalDue" />
+        <input type="hidden" id="AuditServiceActionIds" name="AuditServiceActionIds" value="" />
+		
+		<input type="text" readonly="readonly" id="TotalTimecardHours" name="TotalTimecardHours" value=""
+            placeholder="(calculated)" class="form-control calulation-trigger"
+            data-change-update="#TotalDue" />
+        <input type="hidden" id="AuditTimecardIds" name="AuditTimecardIds" value="" />
+
+		<input type="number" id="TimecardBillRate" name="TimecardBillRate" value=""
+            placeholder="ie. 58.50" class="form-control calulation-trigger"
+            data-change-update="#TotalDue" min="0" />
+		
+		<input type="number" id="DiscountAmount" name="DiscountAmount" value=""
+            placeholder="ie. 12.35" class="form-control calulation-trigger"
+            data-change-update="#TotalDue" min="0" />
+		
+		<input type="text" readonly="readonly" id="TotalDue" name="TotalDue" value=""
+            placeholder="(calculated)" class="form-control calulation-trigger"
+            data-change-update-expression="(((TotalTimecardHours||0) * (TimecardBillRate||0)) + ((TotalServiceValuation||0)*1)) - ((DiscountAmount||0)*1)"
+            data-change-update="#TipSuggestedPercentAmount" />
+
+			
+No custom javascript is needed to make this form work.  The data attributes on the inputs define how the formula flow works.
+
+*class = 'calculation-trigger' :* Any input with this class when changed will trigger a recalculation of any inputs designated.
+*attribute 'data-change-update' :* The designated input(s) as a jquery selector to be updated when the current input is edited by a user
+or recalculated by another input change.
+
+*attribute 'data-change-update-expression' :* An expression for a calculated field.  This expression can use any named input in the same form.  
+For instance 'TotalTimecardHours' in the formula will use the value of an input with the same 'name' attribute value.  The expression can use any
+combination of matching parenthesis and any mathematical symbols understood by javascript.  The expression must form a valid javascript evaluation statement.
+The formula itself is calculated by the engine by collecting all the form input values into a JSON object using form2js library, then passed that
+JSON object to the jsRender library to render the formula into a text value.  Notice that all the inputs are || with 0 to ensure each part of the expression
+is a valid number if the input happens to be empty.
+
 	
 Built in enhancements (plug-ins)
 =====================
@@ -412,6 +512,16 @@ See the documentation use cases above for how this works in detail.  Any element
 templatedialog
 --------------
 enhances a link to open a dialog using the data-template using all data attributes on the element within the template instantiation.  For that template to use data loaded from a url it should define an inline-editable-host with the appropriate data attributes.
+ 
+listbuildersource
+--------------
+See use case 6 for details.  This plugin updates a textbox with a delimited list of ids for checked items in a checkbox array.  
+It also can sum up values for checked items as well, useful in the changeupdate plugin.
+
+changeupdate
+--------------
+See use case 7 for details.  This plugin is used to turn textboxes into mathematical formulas that get evaluated and updated automatically.
+
  
 Built in functions
 =====================
