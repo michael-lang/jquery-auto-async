@@ -2,10 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>Candor.jQuery.AutoAsync</id>
-    <version>4.0.0.50129</version>
+    <version>4.1.0.60304</version>
     <authors>Michael Lang</authors>
     <owners>Nexul Software LLC, Michael Lang</owners>
-    <copyright>Copyright 2013 Michael Lang</copyright>
+    <copyright>Copyright 2016 Michael Lang</copyright>
     <projectUrl>https://github.com/michael-lang/jquery-auto-async/</projectUrl>
     <licenseUrl>https://github.com/michael-lang/jquery-auto-async/blob/master/MIT-LICENSE.txt</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
