@@ -1,3 +1,7 @@
+This project is ARCHIVED. It was designed and built before larger libraries such as Angular, React, Vue.js, etc...
+
+It also misses newer features of JavaScript that were not available at the time this library was created.
+
 Usage
 =====
 
